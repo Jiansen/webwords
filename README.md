@@ -1,3 +1,16 @@
+## Quick Start
+
+- Install and start up MongoDB (http://www.mongodb.org/display/DOCS/Quickstart).  Disable journaling in the configuration file (/etc/mongodb.conf)
+- Install and start up RabbitMQ Server (http://www.rabbitmq.com/server.html)
+
+- launch the app using sbt
+  - in terminal, run `indexer/target/start` to run the indexer process
+  - in another terminal, run `web/target/start` to run the web process
+- Now open `http://localhost:8080` in a browser
+
+
+# Original README
+
 Web Words, an example Akka/Scala application ready to run on Heroku.
 
 Created by Typesafe, http://typesafe.com/
