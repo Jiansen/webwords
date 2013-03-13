@@ -1,6 +1,7 @@
 import sbt._
 import Keys._
 import com.typesafe.startscript.StartScriptPlugin
+import com.typesafe.sbteclipse.plugin.EclipsePlugin._
 
 object BuildSettings {
     import Dependencies._
@@ -8,7 +9,7 @@ object BuildSettings {
 
     val buildOrganization = "com.typesafe"
     val buildVersion = "1.0"
-    val buildScalaVersion = "2.9.0-1"
+    val buildScalaVersion = "2.10.0"
 
     val globalSettings = Seq(
         organization := buildOrganization,
@@ -23,31 +24,38 @@ object BuildSettings {
 }
 
 object Resolvers {
-    val sonatypeRepo = "Sonatype Release" at "http://oss.sonatype.org/content/repositories/releases"
+    val sonatypeRepo = "Sonatype Release" at "https://oss.sonatype.org/content/repositories/releases"
     val jbossRepo = "JBoss" at "http://repository.jboss.org/nexus/content/groups/public/"
     val akkaRepo = "Akka" at "http://repo.akka.io/repository/"
 }
 
 object Dependencies {
-    val scalatest = "org.scalatest" %% "scalatest" % "1.6.1" % "test"
-    val slf4jSimple = "org.slf4j" % "slf4j-simple" % "1.6.2"
+  object V {
+    val Akka      = "2.2-M1"
+  }
+
+    val scalatest = "org.scalatest"       %% "scalatest"         % "1.9.1" % "test"
+    val slf4jSimple = "com.typesafe.akka"   %% "akka-slf4j"  % V.Akka
     val slf4jSimpleTest = slf4jSimple % "test"
 
-    val jettyVersion = "7.4.0.v20110414"
+    private val jettyVersion = "7.4.0.v20110414"
+//    val jettyVersion = "9.0.0.v20130308"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % jettyVersion
     val jettyServlet = "org.eclipse.jetty" % "jetty-servlet" % jettyVersion
     val jettyServerTest = jettyServer % "test"
+//    val jettyOrbit = "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container" artifacts (Artifact("javax.servlet", "jar", "jar"))
 
     val akka = "se.scalablesolutions.akka" % "akka-actor" % "1.2"
     val akkaHttp = "se.scalablesolutions.akka" % "akka-http" % "1.2"
     val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.2"
 
-    val asyncHttp = "com.ning" % "async-http-client" % "1.6.5"
+    val asyncHttp = "com.ning" % "async-http-client" % "1.7.8"
 
-    val jsoup = "org.jsoup" % "jsoup" % "1.6.1"
+    val jsoup = "org.jsoup" % "jsoup" % "1.6.3"
 
-    val casbahCore = "com.mongodb.casbah" %% "casbah-core" % "2.1.5-1"
+    val casbahCore = "com.mongodb.casbah" %% "casbah-core" % "2.5.0"
 }
+
 
 object WebWordsBuild extends Build {
     import BuildSettings._
@@ -55,6 +63,8 @@ object WebWordsBuild extends Build {
     import Resolvers._
 
     override lazy val settings = super.settings ++ globalSettings
+
+    classpathTypes ~= (_ + "orbit")
 
     lazy val root = Project("webwords",
                             file("."),
