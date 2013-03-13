@@ -27,11 +27,12 @@ object Resolvers {
     val sonatypeRepo = "Sonatype Release" at "https://oss.sonatype.org/content/repositories/releases"
     val jbossRepo = "JBoss" at "http://repository.jboss.org/nexus/content/groups/public/"
     val akkaRepo = "Akka" at "http://repo.akka.io/repository/"
+//    val typesafe = "Typesafe" at "http://repo.typesafe.com/typesafe/repo/"
 }
 
 object Dependencies {
   object V {
-    val Akka      = "2.2-M1"
+    val Akka      = "2.1.0"
   }
 
     val scalatest = "org.scalatest"       %% "scalatest"         % "1.9.1" % "test"
@@ -45,15 +46,15 @@ object Dependencies {
     val jettyServerTest = jettyServer % "test"
 //    val jettyOrbit = "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container" artifacts (Artifact("javax.servlet", "jar", "jar"))
 
-    val akka = "se.scalablesolutions.akka" % "akka-actor" % "1.2"
-    val akkaHttp = "se.scalablesolutions.akka" % "akka-http" % "1.2"
+    val akka     = "com.typesafe.akka"   %% "akka-actor"  	% V.Akka
+    val akkaHttp = "com.typesafe.akka" %% "akka-http" % "1.0.0"
     val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.2"
 
     val asyncHttp = "com.ning" % "async-http-client" % "1.7.8"
 
     val jsoup = "org.jsoup" % "jsoup" % "1.6.3"
 
-    val casbahCore = "com.mongodb.casbah" %% "casbah-core" % "2.5.0"
+    val casbahCore = "org.mongodb" %% "casbah-core" % "2.5.0"
 }
 
 
@@ -63,8 +64,6 @@ object WebWordsBuild extends Build {
     import Resolvers._
 
     override lazy val settings = super.settings ++ globalSettings
-
-    classpathTypes ~= (_ + "orbit")
 
     lazy val root = Project("webwords",
                             file("."),
