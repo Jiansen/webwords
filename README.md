@@ -1,6 +1,7 @@
 ## Quick Start
 
 - Install and start up MongoDB (http://www.mongodb.org/display/DOCS/Quickstart).  Disable journaling in the configuration file (/etc/mongodb.conf)
+  - sudo service mongodb start
 - Install and start up RabbitMQ Server (http://www.rabbitmq.com/server.html)
 
 - launch the app using sbt
