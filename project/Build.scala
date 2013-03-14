@@ -70,23 +70,23 @@ object WebWordsBuild extends Build {
                             settings = projectSettings ++
                             Seq(
                                 StartScriptPlugin.stage in Compile := Unit
-                            )) aggregate(common, web, indexer)
+                            )) aggregate(webwords_common, webwords_web, webwords_indexer)
 
-    lazy val web = Project("webwords-web",
-                           file("web"),
+    lazy val webwords_web = Project("webwords-web",
+                           file("webwords-web"),
                            settings = projectSettings ++
                            StartScriptPlugin.startScriptForClassesSettings ++
 //                           Seq(libraryDependencies ++= Seq(akkaHttp, jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
-                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
+                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(webwords_common)
 
-    lazy val indexer = Project("webwords-indexer",
-                              file("indexer"),
+    lazy val webwords_indexer = Project("webwords-indexer",
+                              file("webwords-indexer"),
                               settings = projectSettings ++
                               StartScriptPlugin.startScriptForClassesSettings ++
-                              Seq(libraryDependencies ++= Seq(jsoup))) dependsOn(common % "compile->compile;test->test")
+                              Seq(libraryDependencies ++= Seq(jsoup))) dependsOn(webwords_common)
 
-    lazy val common = Project("webwords-common",
-                           file("common"),
+    lazy val webwords_common = Project("webwords-common",
+                           file("webwords-common"),
                            settings = projectSettings ++
                            Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore)))
 }
