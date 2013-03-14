@@ -21,7 +21,7 @@ case class URLFetched(status: Int, headers: Map[String, String], body: String) e
  */
 class URLFetcher extends Actor {
 
-    private val asyncHttpClient = URLFetcher.makeClient
+    private val asyncHttpClient = URLFetcher.makeClient(context.dispatcher)
 
     override def receive = {
         case incoming: URLFetcherIncoming => {

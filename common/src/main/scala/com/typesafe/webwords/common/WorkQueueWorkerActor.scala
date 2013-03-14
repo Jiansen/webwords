@@ -7,7 +7,7 @@ import akka.amqp.AMQP
 import akka.amqp.rpc.RPC
 import akka.pattern.ask
 import scala.concurrent.duration._
-import scala.concurrent.Await
+import scala.concurrent.{Await, Promise}
 /**
  * This actor wraps the work queue on the worker process side.
  */
@@ -16,7 +16,7 @@ abstract class WorkQueueWorkerActor(url: Option[String] = None)
 
     private[this] var rpcServer: Option[RPC.RpcServerHandle] = None
 
-    protected def handleRequest(request: WorkQueueRequest): Future[WorkQueueReply]
+    protected def handleRequest(request: WorkQueueRequest): Promise[WorkQueueReply]
 
     override def receive = {
         case request: WorkQueueRequest =>

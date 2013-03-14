@@ -6,13 +6,16 @@ import org.scalatest.matchers._
 import org.scalatest._
 
 import akka.actor._
-import akka.actor.Actor.actorOf
+import akka.pattern.ask
+import scala.concurrent.duration._
+import scala.concurrent.Await
 
 import javax.servlet.http.HttpServletResponse
 
 class URLFetcherSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAll {
     behavior of "URLFetcher"
 
+    val system = ActorSystem("URLFetcherSpec")
     var httpServer: TestHttpServer = null
 
     override def beforeAll = {
@@ -25,36 +28,39 @@ class URLFetcherSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAll
         httpServer = null
     }
 
+    implicit val timeout = akka.util.Timeout(2 second)
+          
     it should "fetch an url" in {
-        val fetcher = actorOf(new URLFetcher).start
+        val fetcher = system.actorOf(Props(new URLFetcher))
         val f = fetcher ? FetchURL(httpServer.resolve("/hello"))
-        f.get match {
+        Await.result(f, 2 second) match {
             case URLFetched(status, headers, body) =>
                 status should be(HttpServletResponse.SC_OK)
                 body should be("Hello\n")
             case _ =>
                 throw new Exception("Wrong reply message from fetcher")
         }
-        fetcher.stop
+        system.stop(fetcher)
     }
 
     it should "handle a 404" in {
-        val fetcher = actorOf(new URLFetcher).start
+        val fetcher = system.actorOf(Props(new URLFetcher))
         val f = fetcher ? FetchURL(httpServer.resolve("/nothere"))
-        f.get match {
+        Await.result(f, 2 second) match {
             case URLFetched(status, headers, body) =>
                 status should be(HttpServletResponse.SC_NOT_FOUND)
             case _ =>
                 throw new Exception("Wrong reply message from fetcher")
         }
-        fetcher.stop
+        system.stop(fetcher)
     }
 
     it should "fetch many urls in parallel" in {
         // the httpServer only has a fixed number of threads so if you make latency
         // or number of requests too high, the futures will start to time out
         httpServer.withRandomLatency(300) {
-            val fetcher = actorOf(new URLFetcher).start
+          import scala.concurrent.ExecutionContext.Implicits.global
+            val fetcher = system.actorOf(Props(new URLFetcher))
             val numToFetch = 500
             val responses = for (i <- 1 to numToFetch)
                 yield (fetcher ? FetchURL(httpServer.resolve("/echo", "what", i.toString)), i)
@@ -71,7 +77,7 @@ class URLFetcherSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAll
             responses foreach { tuple =>
                 val f = tuple._1
                 val expected = tuple._2.toString
-                f.get match {
+                Await.result(f, 2 second) match {
                     case URLFetched(status, headers, body) =>
                         status should be(HttpServletResponse.SC_OK)
                         body should be(expected)
@@ -87,7 +93,7 @@ class URLFetcherSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAll
             // the random latency should mean we completed in semi-random order
             completed should not be (completed.sorted)
 
-            fetcher.stop
+            system.stop(fetcher)
         }
     }
 }

@@ -16,7 +16,7 @@ import akka.actor.Actor
 // import akka.dispatch.DefaultCompletableFuture
 // import akka.dispatch.FutureTimeoutException
 // import akka.actor.NullChannel
-// import akka.actor.UntypedChannel
+import akka.actor.UntypedChannel
 
 /**
  * This file contains random utility functions.
@@ -25,6 +25,7 @@ import akka.actor.Actor
 package object common {
 
     // Class that adds replyWith to Akka channels
+  /*
     class EnhancedChannel[-T](underlying: Channel[T]) {
         /**
          * Replies to a channel with the result or exception from
@@ -47,6 +48,8 @@ package object common {
     implicit def enhanceChannel[T](channel: Channel[T]): EnhancedChannel[T] = {
         new EnhancedChannel(channel)
     }
+    * 
+    */
 /*
     private def getMailbox(self: ActorRef) = {
         self match {
@@ -78,7 +81,7 @@ package object common {
                   // TODO: wrapper class required
 //                    mi.sender.sendException(new ActorKilledException("Actor is about to suicide"))
 //                  mi.sender ! new ActorKilledException("Actor is about to suicide")                  
-                  mi.sender !  ActorKilledException                  
+                  mi.sender !  akka.actor.ActorKilledException                  
                 }
             case _ =>
                 throw new Exception("Don't know how to iterate over mailbox: " + mailbox)

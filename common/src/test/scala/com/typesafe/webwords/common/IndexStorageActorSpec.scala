@@ -3,10 +3,14 @@ package com.typesafe.webwords.common
 import org.scalatest.matchers._
 import org.scalatest._
 import akka.actor._
-import akka.actor.Actor.actorOf
 import java.net.URL
+import akka.pattern.ask
+import scala.concurrent.duration._
+import scala.concurrent.Await
 
 class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
+  val system = ActorSystem("IndexStorageActorSpec")
+  implicit val timeout = akka.util.Timeout(2 second) 
     private val sampleIndex = Index(
         links = Seq(
             "dogs" -> "http://dogs.com/",
@@ -29,7 +33,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
     private val exampleUrl = new URL("http://example.com/")
     private val exampleUrl2 = new URL("http://example2.com/")
 
-    private def newActor = actorOf(new IndexStorageActor(Some("mongodb://localhost/webwordstest"))).start
+    private def newActor = system.actorOf(Props(new IndexStorageActor(Some("mongodb://localhost/webwordstest"))))
 
     behavior of "IndexStorageActor"
 
@@ -38,7 +42,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
     }
 
     private def fetchIndex(storage: ActorRef, url: URL): Index = {
-        (storage ? FetchCachedIndex(url.toExternalForm)).get match {
+        Await.result((storage ? FetchCachedIndex(url.toExternalForm)), 2 second) match {
             case CachedIndexFetched(Some(index)) =>
                 index
             case whatever =>
@@ -47,7 +51,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
     }
 
     private def cacheSize(storage: ActorRef): Long = {
-        (storage ? GetCacheSize).get match {
+        Await.result(storage ? GetCacheSize, 2 second) match {
             case CacheSize(x) => x
             case whatever =>
                 throw new Exception("failed to get cache size, got: " + whatever)
@@ -58,7 +62,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
         val storage = newActor
         storage ! DropCache
         cacheSize(storage) should be(0)
-        storage.stop
+        system.stop(storage)
     }
 
     it should "store and retrieve an index" in {
@@ -66,7 +70,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
         cacheIndex(storage, exampleUrl, sampleIndex)
         val fetched = fetchIndex(storage, exampleUrl)
         fetched should be(sampleIndex)
-        storage.stop
+        system.stop(storage)
     }
 
     it should "store and retrieve an empty index" in {
@@ -74,7 +78,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
         cacheIndex(storage, exampleUrl2, emptyIndex)
         val fetched = fetchIndex(storage, exampleUrl2)
         fetched should be(emptyIndex)
-        storage.stop
+        system.stop(storage)
     }
 
     it should "use the newest entry" in {
@@ -86,7 +90,7 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
         cacheIndex(storage, exampleUrl, anotherIndex)
         val newIndex = fetchIndex(storage, exampleUrl)
         newIndex should be(anotherIndex)
-        storage.stop
+        system.stop(storage)
     }
 
     it should "drop the cache" in {
@@ -96,6 +100,6 @@ class IndexStorageActorSpec extends FlatSpec with ShouldMatchers {
         fetched should be(anotherIndex)
         storage ! DropCache
         cacheSize(storage) should be(0)
-        storage.stop
+        system.stop(storage)
     }
 }

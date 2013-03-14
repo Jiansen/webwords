@@ -3,16 +3,21 @@ package com.typesafe.webwords.common
 import org.scalatest.matchers._
 import org.scalatest._
 import akka.actor._
-import akka.actor.Actor.actorOf
+//import akka.actor.Actor.actorOf
 import akka.dispatch._
+import akka.pattern.ask
+import scala.concurrent.{promise, Await}
+import scala.concurrent.duration._
 
 class WorkQueueSpec extends FlatSpec with ShouldMatchers {
-
+      val system = ActorSystem("WorkQueueSpec")
+      
     private class EchoWorker(amqpUrl: Option[String] = None) extends WorkQueueWorkerActor(amqpUrl) {
         override def handleRequest(request: WorkQueueRequest) = {
             request match {
                 case SpiderAndCache(url) =>
-                    new AlreadyCompletedFuture[WorkQueueReply](Right(SpideredAndCached(url)))
+                  promise() success SpideredAndCached(url)
+//                    new AlreadyCompletedFuture[WorkQueueReply](Right(SpideredAndCached(url)))
             }
         }
     }
@@ -62,20 +67,24 @@ class WorkQueueSpec extends FlatSpec with ShouldMatchers {
         // The worker side sets up the exchange, while the client
         // will throw errors if it isn't set up yet. So the
         // worker has to go first.
-        val worker = actorOf(new EchoWorker())
-        worker.start
+
+        val worker = system.actorOf(Props(new EchoWorker()))
+//        worker.start
 
         Thread.sleep(500)
 
-        val client = actorOf(new WorkQueueClientActor())
-        client.start
+        implicit val timeout = akka.util.Timeout(2 second)
+        val client = system.actorOf(Props(new WorkQueueClientActor()))
+//        client.start
 
         val url = "http://example.com/"
-        val result = (client ? SpiderAndCache(url)).get
+        val result = Await.result(client ? SpiderAndCache(url), 2 second)
 
         result should be(SpideredAndCached(url))
 
-        client.stop
-        worker.stop
+        // client.stop
+        // worker.stop
+      system.stop(client)
+      system.stop(worker)
     }
 }
