@@ -32,7 +32,7 @@ object Resolvers {
 
 object Dependencies {
   object V {
-    val Akka      = "2.1.0"
+    val Akka      = "2.1.1"
   }
 
     val scalatest = "org.scalatest"       %% "scalatest"         % "1.9.1" % "test"
@@ -77,13 +77,13 @@ object WebWordsBuild extends Build {
                            settings = projectSettings ++
                            StartScriptPlugin.startScriptForClassesSettings ++
 //                           Seq(libraryDependencies ++= Seq(akkaHttp, jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
-                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(webwords_common)
+                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(webwords_common % "compile->compile;test->test")
 
     lazy val webwords_indexer = Project("webwords-indexer",
                               file("webwords-indexer"),
                               settings = projectSettings ++
                               StartScriptPlugin.startScriptForClassesSettings ++
-                              Seq(libraryDependencies ++= Seq(jsoup))) dependsOn(webwords_common)
+                              Seq(libraryDependencies ++= Seq(jsoup))) dependsOn(webwords_common % "compile->compile;test->test")
 
     lazy val webwords_common = Project("webwords-common",
                            file("webwords-common"),
