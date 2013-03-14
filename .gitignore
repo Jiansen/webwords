@@ -1,6 +1,8 @@
 target/
 .project
 .classpath
+.settings
 .target
 .cache
+.metadata
 *~

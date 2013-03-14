@@ -3,8 +3,11 @@ package com.typesafe.webwords.common
 import java.net.URL
 
 import akka.actor.{ Index => _, _ }
-import akka.actor.Actor.actorOf
+import akka.actor.Actor
 import akka.dispatch._
+import akka.pattern.ask
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait ClientActorIncoming
 case class GetIndex(url: String, skipCache: Boolean) extends ClientActorIncoming
@@ -22,9 +25,10 @@ case class GotIndex(url: String, index: Option[Index], cacheHit: Boolean) extend
  */
 class ClientActor(config: WebWordsConfig) extends Actor {
     import ClientActor._
-
-    private val client = actorOf(new WorkQueueClientActor(config.amqpURL))
-    private val cache = actorOf(new IndexStorageActor(config.mongoURL))
+    import ExecutionContext.Implicits.global
+    
+    var client:ActorRef;
+    var cache:ActorRef;
 
     override def receive = {
         case incoming: ClientActorIncoming =>
@@ -37,7 +41,7 @@ class ClientActor(config: WebWordsConfig) extends Actor {
                     def getWithoutCache = {
                         getFromWorker(client, url) flatMap { _ =>
                             getFromCacheOrElse(cache, url, cacheHit = false) {
-                                new AlreadyCompletedFuture[GotIndex](Right(GotIndex(url, index = None, cacheHit = false)))
+                              Future(GotIndex(url, index = None, cacheHit = false))
                             }
                         }
                     }
@@ -47,26 +51,29 @@ class ClientActor(config: WebWordsConfig) extends Actor {
                     else
                         getFromCacheOrElse(cache, url, cacheHit = true) { getWithoutCache }
 
-                    self.channel.replyWith(futureGotIndex)
+//                    self.channel.replyWith(futureGotIndex)
+                    sender ! futureGotIndex
             }
     }
 
     override def preStart = {
-        client.start
-        cache.start
+        client = context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)))
+        cache= context.actorOf(Props(new IndexStorageActor(config.mongoURL)))
     }
 
     override def postStop = {
-        client.stop
-        cache.stop
+        context.stop(client)
+        context.stop(cache)
     }
 }
 
 object ClientActor {
+    implicit val timeout = akka.util.Timeout(2 second)
+    import ExecutionContext.Implicits.global
     private def getFromCacheOrElse(cache: ActorRef, url: String, cacheHit: Boolean)(fallback: => Future[GotIndex]): Future[GotIndex] = {
         cache ? FetchCachedIndex(url) flatMap {
             case CachedIndexFetched(Some(index)) =>
-                new AlreadyCompletedFuture(Right(GotIndex(url, Some(index), cacheHit)))
+              Future(GotIndex(url, Some(index), cacheHit))
             case CachedIndexFetched(None) =>
                 fallback
         }

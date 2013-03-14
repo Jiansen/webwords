@@ -2,20 +2,21 @@ package com.typesafe.webwords
 
 import java.net.URI
 import java.net.URISyntaxException
-import akka.actor.Channel
-import akka.actor.ActorKilledException
+// import akka.actor.Channel
+// import akka.actor.ActorKilledException
 import akka.actor.ActorRef
-import akka.actor.LocalActorRef
+// import akka.actor.LocalActorRef
 import akka.dispatch.Future
-import akka.dispatch.MessageInvocation
+//import akka.dispatch.MessageInvocation
+import akka.dispatch.Envelope
 import akka.dispatch.MessageQueue
 import akka.actor.Actor
-import akka.dispatch.CompletableFuture
-import akka.actor.ActorInitializationException
-import akka.dispatch.DefaultCompletableFuture
-import akka.dispatch.FutureTimeoutException
-import akka.actor.NullChannel
-import akka.actor.UntypedChannel
+// import akka.dispatch.CompletableFuture
+// import akka.actor.ActorInitializationException
+// import akka.dispatch.DefaultCompletableFuture
+// import akka.dispatch.FutureTimeoutException
+// import akka.actor.NullChannel
+// import akka.actor.UntypedChannel
 
 /**
  * This file contains random utility functions.
@@ -46,7 +47,7 @@ package object common {
     implicit def enhanceChannel[T](channel: Channel[T]): EnhancedChannel[T] = {
         new EnhancedChannel(channel)
     }
-
+/*
     private def getMailbox(self: ActorRef) = {
         self match {
             // LocalActorRef.mailbox is public but
@@ -60,8 +61,9 @@ package object common {
                 throw new Exception("Can't get mailbox on this ActorRef: " + self)
         }
     }
-
-    private def invocations(mq: MessageQueue): Stream[MessageInvocation] = {
+*/
+    private def invocations(mq: MessageQueue): Stream[Envelope] = {
+//    private def invocations(mq: MessageQueue): Stream[MessageInvocation] = {
         val mi = mq.dequeue
         if (mi eq null)
             Stream.empty
@@ -73,7 +75,10 @@ package object common {
         mailbox match {
             case mq: MessageQueue =>
                 invocations(mq) foreach { mi =>
-                    mi.channel.sendException(new ActorKilledException("Actor is about to suicide"))
+                  // TODO: wrapper class required
+//                    mi.sender.sendException(new ActorKilledException("Actor is about to suicide"))
+//                  mi.sender ! new ActorKilledException("Actor is about to suicide")                  
+                  mi.sender !  ActorKilledException                  
                 }
             case _ =>
                 throw new Exception("Don't know how to iterate over mailbox: " + mailbox)
@@ -84,12 +89,14 @@ package object common {
     // the sender gets an exception;
     // see https://www.assembla.com/spaces/akka/tickets/894
     // In 1.2, we use this temporary workaround to simulate the 2.0 behavior.
+    /*
     def stopActorNotifyingMailbox(self: ActorRef) = {
-        val mailbox = getMailbox(self)
+        val mailbox = getMailbox(self)        
         self.stop
         sendExceptionsToMailbox(mailbox)
     }
-
+*/
+    /*
     def tryAsk(actor: ActorRef, message: Any)(implicit channel: UntypedChannel = NullChannel, timeout: Actor.Timeout = Actor.defaultTimeout): CompletableFuture[Any] = {
         // "?" will throw by default on a stopped actor; we want to put an exception
         // in the future instead to avoid special cases
@@ -102,7 +109,7 @@ package object common {
                 f
         }
     }
-
+*/
     private def stripSlash(s: String) =
         if (s == "")
             null
@@ -111,8 +118,7 @@ package object common {
         else
             s
 
-    case class URIParts(scheme: String, user: Option[String], password: Option[String],
-        host: Option[String], port: Option[Int], path: Option[String])
+
 
     def expandURI(s: String, defaults: URIParts): Option[URIParts] = {
         try {
@@ -141,3 +147,5 @@ package object common {
         }
     }
 }
+
+

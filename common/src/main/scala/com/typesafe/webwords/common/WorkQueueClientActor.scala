@@ -15,12 +15,12 @@ class WorkQueueClientActor(url: Option[String] = None)
 
     override def receive = {
         case request: WorkQueueRequest =>
-            val savedChannel = self.channel
             rpcClient.get.callAsync(request, timeout = 60 * 1000)({
                 case Some(reply) =>
-                    savedChannel.tryTell(reply)(self)
-                case None =>
-                    savedChannel.sendException(new Exception("no reply to: " + request))
+                    sender ! reply
+                    // TODO:
+//                case None =>
+//                    savedChannel.sendException(new Exception("no reply to: " + request))
             })
 
         case m =>

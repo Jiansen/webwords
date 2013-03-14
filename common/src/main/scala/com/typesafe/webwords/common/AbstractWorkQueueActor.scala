@@ -122,7 +122,7 @@ abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
 
     override def postStop = {
         destroyRpc
-        connectionActor foreach { _.stop }
+        connectionActor foreach { a=>context.stop(a) }
         connectionActor = None
     }
 }

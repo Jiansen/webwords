@@ -8,6 +8,7 @@ import com.ning.http.client._
 import akka.actor._
 import akka.dispatch._
 import akka.event.EventHandler
+import scala.concurrent.{Future, Promise, promise, future}
 
 sealed trait URLFetcherIncoming
 case class FetchURL(u: URL) extends URLFetcherIncoming
@@ -29,7 +30,8 @@ class URLFetcher extends Actor {
                     URLFetcher.fetchURL(asyncHttpClient, u)
             }
 
-            self.channel.replyWith(f)
+//            self.channel.replyWith(f)
+            sender ! f
         }
     }
 
@@ -60,10 +62,12 @@ object URLFetcher {
     private def fetchURL(asyncHttpClient: AsyncHttpClient, u: URL): Future[URLFetched] = {
         // timeout the Akka future 50ms after we'd have timed out the request anyhow,
         // gives us 50ms to parse the response
-        val f = new DefaultCompletableFuture[URLFetched](asyncHttpClient.getConfig().getRequestTimeoutInMs() + 50,
-            TimeUnit.MILLISECONDS)
+//        val f = new DefaultCompletableFuture[URLFetched](asyncHttpClient.getConfig().getRequestTimeoutInMs() + 50,
+//            TimeUnit.MILLISECONDS)
 
-        val httpHandler = new AsyncHandler[Unit]() {
+      var f:Promise[URLFetched] = promise[URLFetched]// = new akka.dispatch.DefaultPromise
+
+      val httpHandler = new AsyncHandler[Unit]() {
             httpInFlight.incrementAndGet()
 
             val builder =
@@ -81,7 +85,8 @@ object URLFetcher {
                     } catch {
                         case t: Throwable => {
                             EventHandler.debug(this, t.getMessage)
-                            f.completeWithException(t)
+                            f failure t
+//                            f.completeWithException(t)
                             throw t // rethrow for benefit of AsyncHttpClient
                         }
                     } finally {
@@ -132,12 +137,14 @@ object URLFetcher {
 
                     val body = response.getResponseBody()
 
-                    f.completeWithResult(URLFetched(response.getStatusCode(), headers, body))
+//                    f.completeWithResult(URLFetched(response.getStatusCode(), headers, body))
+                    f success URLFetched(response.getStatusCode(), headers, body)
+                    
                 }
             }
         }
 
         asyncHttpClient.prepareGet(u.toExternalForm()).execute(httpHandler)
-        f
+        f.future
     }
 }

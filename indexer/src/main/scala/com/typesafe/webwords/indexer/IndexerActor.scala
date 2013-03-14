@@ -2,7 +2,7 @@ package com.typesafe.webwords.indexer
 
 import scala.collection.JavaConverters._
 import akka.actor.{ Index => _, _ }
-import akka.actor.Actor.actorOf
+//import akka.actor.Actor.actorOf
 import com.typesafe.webwords.common.CPUBoundActorPool
 import java.net.URL
 import java.net.URI

@@ -76,7 +76,8 @@ object WebWordsBuild extends Build {
                            file("web"),
                            settings = projectSettings ++
                            StartScriptPlugin.startScriptForClassesSettings ++
-                           Seq(libraryDependencies ++= Seq(akkaHttp, jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
+//                           Seq(libraryDependencies ++= Seq(akkaHttp, jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
+                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
 
     lazy val indexer = Project("webwords-indexer",
                               file("indexer"),

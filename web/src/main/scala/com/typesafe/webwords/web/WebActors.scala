@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.xml
 import scala.xml.Attribute
 import akka.actor.{ Index => _, _ }
-import akka.actor.Actor.actorOf
+// import akka.actor.Actor.actorOf
 import akka.http._
 import com.typesafe.webwords.common._
 import java.net.URL
@@ -34,7 +34,7 @@ class Custom404Actor extends Actor {
 
 // this actor handles the main page.
 class WordsActor(config: WebWordsConfig) extends Actor {
-    private val client = actorOf(new ClientActor(config))
+    private val client = context.actorOf(new ClientActor(config))
 
     case class Finish(request: RequestMethod, url: String, index: Option[Index],
         cacheHit: Boolean, startTime: Long)
