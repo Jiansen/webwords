@@ -27,9 +27,9 @@ class ClientActor(config: WebWordsConfig) extends Actor {
     import ClientActor._
     import ExecutionContext.Implicits.global
     
-    var client:ActorRef;
-    var cache:ActorRef;
-
+    var client:ActorRef = context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)))
+    var cache:ActorRef = context.actorOf(Props(new IndexStorageActor(config.mongoURL)))
+        
     override def receive = {
         case incoming: ClientActorIncoming =>
             incoming match {
@@ -55,12 +55,12 @@ class ClientActor(config: WebWordsConfig) extends Actor {
                     sender ! futureGotIndex
             }
     }
-
+/*
     override def preStart = {
         client = context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)))
         cache= context.actorOf(Props(new IndexStorageActor(config.mongoURL)))
     }
-
+*/
     override def postStop = {
         context.stop(client)
         context.stop(cache)
