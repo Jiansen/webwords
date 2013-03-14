@@ -37,7 +37,7 @@ class WorkQueueSpec extends FlatSpec with ShouldMatchers {
     it should "parse a default url" in {
         val url = "amqp:///"
         val params = AbstractWorkQueueActor.parseAmqpUrl(url)
-        val defaults = akka.amqp.AMQP.ConnectionParameters()
+        val defaults = util.AMQP.ConnectionParameters()
         params.addresses(0).getHost should be(defaults.addresses(0).getHost)
         params.addresses(0).getPort should be(defaults.addresses(0).getPort)
         params.username should be(defaults.username)

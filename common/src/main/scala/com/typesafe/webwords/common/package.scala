@@ -6,7 +6,8 @@ import java.net.URISyntaxException
 // import akka.actor.ActorKilledException
 import akka.actor.ActorRef
 // import akka.actor.LocalActorRef
-import akka.dispatch.Future
+// import akka.dispatch.Future
+import scala.concurrent.Future
 //import akka.dispatch.MessageInvocation
 import akka.dispatch.Envelope
 import akka.dispatch.MessageQueue
@@ -16,7 +17,7 @@ import akka.actor.Actor
 // import akka.dispatch.DefaultCompletableFuture
 // import akka.dispatch.FutureTimeoutException
 // import akka.actor.NullChannel
-import akka.actor.UntypedChannel
+// import akka.actor.UntypedChannel
 
 /**
  * This file contains random utility functions.

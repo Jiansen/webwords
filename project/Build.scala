@@ -48,7 +48,8 @@ object Dependencies {
 
     val akka     = "com.typesafe.akka"   %% "akka-actor"  	% V.Akka
     val akkaHttp = "com.typesafe.akka" %% "akka-http" % "1.0.0"
-    val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.2"
+//    val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.2"
+    val akkaAmqp = "com.github.sstone" %% "akka-amqp-proxies" % "1.1"
 
     val asyncHttp = "com.ning" % "async-http-client" % "1.7.8"
 

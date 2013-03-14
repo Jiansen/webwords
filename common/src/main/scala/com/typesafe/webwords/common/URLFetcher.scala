@@ -7,7 +7,8 @@ import java.util.concurrent.Executors
 import com.ning.http.client._
 import akka.actor._
 import akka.dispatch._
-import akka.event.EventHandler
+// import akka.event.EventHandler
+import akka.event.Logging
 import scala.concurrent.{Future, Promise, promise, future}
 
 sealed trait URLFetcherIncoming
@@ -84,7 +85,7 @@ object URLFetcher {
                         body
                     } catch {
                         case t: Throwable => {
-                            EventHandler.debug(this, t.getMessage)
+//                            EventHandler.debug(this, t.getMessage)
                             f failure t
 //                            f.completeWithException(t)
                             throw t // rethrow for benefit of AsyncHttpClient

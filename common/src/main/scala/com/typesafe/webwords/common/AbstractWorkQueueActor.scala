@@ -4,11 +4,15 @@ import java.net.URI
 import java.net.URLEncoder
 import java.net.URLDecoder
 import akka.actor._
-import akka.amqp
-import akka.amqp.AMQP
-import akka.amqp.AMQP.ConnectionParameters
-import akka.amqp.rpc.RPC
+import com.github.sstone.amqp
+//import com.github.sstone.amqp.Amqp
+//import com.github.sstone.amqp.Amqp.ConnectionParameters
+//import com.github.sstone.amqp.rpc.RPC
+import com.github.sstone.amqp.{Amqp, RpcClient, RpcServer, RabbitMQConnection}
+import com.github.sstone.amqp.Amqp.{ChannelParameters}
 import com.rabbitmq.client.Address
+import util.AMQP.{ToBinary, FromBinary}
+import util.AMQP.ConnectionParameters
 
 sealed trait WorkQueueMessage {
     self: Product =>
@@ -47,11 +51,11 @@ sealed trait WorkQueueRequest extends WorkQueueMessage {
 case class SpiderAndCache(url: String) extends WorkQueueRequest
 
 object WorkQueueRequest {
-    private[common] val toBinary = new AMQP.ToBinary[WorkQueueRequest] {
+    private[common] val toBinary = new ToBinary[WorkQueueRequest] {
         override def toBinary(request: WorkQueueRequest) = request.toBinary
     }
 
-    private[common] val fromBinary = new AMQP.FromBinary[WorkQueueRequest] {
+    private[common] val fromBinary = new FromBinary[WorkQueueRequest] {
         override def fromBinary(bytes: Array[Byte]) = {
             WorkQueueMessage.unpacked(bytes).toList match {
                 case "SpiderAndCache" :: url :: Nil =>
@@ -60,7 +64,7 @@ object WorkQueueRequest {
                     throw new Exception("Bad message: " + whatever)
             }
         }
-    }
+    }  
 }
 
 sealed trait WorkQueueReply extends WorkQueueMessage {
@@ -69,11 +73,11 @@ sealed trait WorkQueueReply extends WorkQueueMessage {
 case class SpideredAndCached(url: String) extends WorkQueueReply
 
 object WorkQueueReply {
-    private[common] val toBinary = new AMQP.ToBinary[WorkQueueReply] {
+    private[common] val toBinary = new ToBinary[WorkQueueReply] {
         override def toBinary(reply: WorkQueueReply) = reply.toBinary
     }
 
-    private[common] val fromBinary = new AMQP.FromBinary[WorkQueueReply] {
+    private[common] val fromBinary = new FromBinary[WorkQueueReply] {
         override def fromBinary(bytes: Array[Byte]) = {
             WorkQueueMessage.unpacked(bytes).toList match {
                 case "SpideredAndCached" :: url :: Nil =>
@@ -97,16 +101,22 @@ object WorkQueueReply {
  */
 abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
     extends Actor {
-    protected[this] val info = akka.event.EventHandler.info(this, _: String)
+  val log = akka.event.Logging(context.system, this)
+    protected[this] val info = log.info( _: String)
 
     private[this] var connectionActor: Option[ActorRef] = None
 
     override def receive = {
 
         // Messages from the connection ("connection callback")
+    // TOOD:
+    case m => println("TODO: message handler for "+m);
+    /*
         case amqp.Connected => info("Connected to AMQP")
         case amqp.Reconnecting => info("Reconnecting to AMQP")
         case amqp.Disconnected => info("Disconnected from AMQP")
+        * 
+        */
     }
 
     protected def createRpc(connection: ActorRef): Unit
@@ -116,8 +126,9 @@ abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
 
     override def preStart = {
         val params = AbstractWorkQueueActor.parseAmqpUrl(amqpUrl.getOrElse(AbstractWorkQueueActor.DEFAULT_AMQP_URL))
-        connectionActor = Some(AMQP.newConnection(params.copy(connectionCallback = Some(self))))
-        createRpc(connectionActor.get)
+//        connectionActor = Some(AMQP.newConnection(params.copy(connectionCallback = Some(self))))
+//        createRpc(connectionActor.get)
+        val conn = new RabbitMQConnection(host = "localhost", name = "Connection")(context.system)
     }
 
     override def postStop = {
@@ -131,6 +142,7 @@ object AbstractWorkQueueActor {
     private val DEFAULT_AMQP_URL = "amqp:///"
 
     // surely the rabbitmq library or something has this somewhere but I can't find it.
+      
     private[common] def parseAmqpUrl(url: String): ConnectionParameters = {
         // Example: amqp://uname:pwd@host:13029/vhost
 
@@ -154,4 +166,5 @@ object AbstractWorkQueueActor {
 
         params
     }
+
 }

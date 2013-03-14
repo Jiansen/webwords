@@ -2,8 +2,8 @@ package com.typesafe.webwords.common
 
 import java.net.URL
 
-import akka.actor.{ Index => _, _ }
-import akka.actor.Actor
+//import akka.actor.{ Index => _, _ }
+import akka.actor._
 import akka.dispatch._
 import akka.pattern.ask
 import scala.concurrent.duration._

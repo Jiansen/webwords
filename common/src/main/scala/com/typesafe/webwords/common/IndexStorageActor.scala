@@ -1,7 +1,8 @@
 package com.typesafe.webwords.common
 
 import scala.collection.JavaConverters._
-import akka.actor.{ Index => _, _ }
+// import akka.actor.{ Index => _, _ }
+import akka.actor._
 import java.net.URL
 import com.mongodb.casbah.MongoConnection
 import com.mongodb.casbah.MongoDB
@@ -36,8 +37,8 @@ case class CacheSize(size: Long) extends IndexStorageReply
  *   http://www.mongodb.org/display/DOCS/Capped+Collections
  */
 class IndexStorageActor(mongoURI: Option[String])
-    extends Actor
-    with IOBoundActorPool {
+    extends Actor {
+//    with IOBoundActorPool {
 
     // MongoCollection is safe to use from multiple threads
     private class Worker(cache: MongoCollection)
@@ -114,7 +115,9 @@ class IndexStorageActor(mongoURI: Option[String])
             recreateCache()
         case m =>
             // send other messages to the pool
-            _route.apply(m)
+//            _route.apply(m)
+          // TODO:
+          println("IndexStorageActor: fix me!"+m)
     }
 
     private[this] var connection: Option[MongoConnection] = None

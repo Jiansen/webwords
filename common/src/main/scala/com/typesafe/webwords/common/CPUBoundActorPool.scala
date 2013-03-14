@@ -14,6 +14,7 @@ import akka.routing._
  * A lot of the values set here are pretty arbitrary and could only
  * be set scientifically with a lot of application-specific tuning.
  */
+/*
 trait CPUBoundActorPool
     extends DefaultActorPool
     with SmallestMailboxSelector
@@ -44,3 +45,4 @@ trait CPUBoundActorPool
     // this one is intended to be less than 1.0-backoffThreshold so we keep some slack.
     override def backoffRate = 0.20
 }
+*/
