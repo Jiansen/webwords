@@ -18,7 +18,7 @@ object BuildSettings {
         scalacOptions += "-deprecation",
         fork in test := true,
         libraryDependencies ++= Seq(slf4jSimpleTest, scalatest, jettyServerTest),
-        resolvers := Seq(jbossRepo, akkaRepo, sonatypeRepo))
+        resolvers := Seq(jbossRepo, akkaRepo, sonatypeRepo, newMotion))
 
     val projectSettings = Defaults.defaultSettings ++ globalSettings
 }
@@ -80,7 +80,7 @@ object WebWordsBuild extends Build {
                            file("untypedweb"),
                            settings = projectSettings ++
                            StartScriptPlugin.startScriptForClassesSettings ++
-                           Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore, jettyServer, jettyServlet, slf4jSimple, jsoup))) 
+                           Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore, jettyServer, jettyServlet, slf4jSimple, jsoup, akkaHttp))) 
 
 /*
     lazy val web = Project("webwords-web",
