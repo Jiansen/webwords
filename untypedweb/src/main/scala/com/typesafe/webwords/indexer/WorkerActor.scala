@@ -19,8 +19,8 @@ import scala.util.{Try, Success, Failure}
  */
 class WorkerActor(config: WebWordsConfig)
     extends WorkQueueWorkerActor(config.amqpURL) {
-    private val spider = context.actorOf(Props[SpiderActor])
-    private val cache = context.actorOf(Props(new IndexStorageActor(config.mongoURL)))
+    private val spider = context.actorFor("./spider")
+    private val cache = context.actorFor("./cache")
 
     implicit val timeout = akka.util.Timeout(5 second)
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -55,6 +55,8 @@ class WorkerActor(config: WebWordsConfig)
 
     override def preStart = {
         super.preStart
+        context.actorOf(Props[SpiderActor], "spider")
+        context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache")
 //        spider.start
 //        cache.start
     }
