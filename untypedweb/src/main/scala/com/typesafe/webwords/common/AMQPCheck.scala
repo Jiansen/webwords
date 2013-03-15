@@ -32,7 +32,6 @@ object AMQPCheck {
             try {
                 val channel = connection.createChannel()
                 try {
-                    // First create a queue just to be sure we can
                     val queueName = "webwords_check"
                     channel.queueDeclare(queueName, false /* durable */ , false /* exclusive */ , true /* autodelete */ , null)
                     val message = "Hello World!"
