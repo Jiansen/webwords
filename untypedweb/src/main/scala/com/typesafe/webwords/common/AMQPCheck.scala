@@ -29,16 +29,17 @@ object AMQPCheck {
             factory.setVirtualHost(params.virtualHost)
 
             val connection = factory.newConnection()
-            try {
-                val channel = connection.createChannel()
-                try {
+            try {              
+                val channel = connection.createChannel()                
+                try {                  
                     val queueName = "webwords_check"
                     channel.queueDeclare(queueName, false /* durable */ , false /* exclusive */ , true /* autodelete */ , null)
                     val message = "Hello World!"
                     channel.basicPublish("", queueName, null, message.getBytes())
                     // get the message back out or the queue will keep it around forever
                     channel.basicGet(queueName, true /* autoAck */ )
-
+// println("params:"+params)
+// println("addresses:"+params.addresses(0))
                     // Now if requested, wait up to a few minutes for a desired queue to exist
                     queueToWaitFor foreach { queue =>
                         waitForQueue(connection, queue, timeoutMs)
@@ -69,6 +70,7 @@ object AMQPCheck {
         // so we create a new channel each time.
         val exists = try {
             val channel = connection.createChannel()
+println("lala: "+channel)            
             try {
                 channel.queueDeclarePassive(name)
             } finally {

@@ -57,8 +57,8 @@ class WorkerActor(config: WebWordsConfig)
         super.preStart
         context.actorOf(Props[SpiderActor], "spider")
         context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache")
-//        spider.start
-//        cache.start
+        
+println("WorkerActor.scala")
     }
 
     override def postStop = {

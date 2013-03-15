@@ -24,7 +24,7 @@ class WebServer(config: WebWordsConfig, servername:String = "default") {
     // to use Akka HTTP, we need a RootEndpoint which is an actor that
     // comes with Akka
 //    private val rootEndpoint = system.actorFor("/user/root")
-   private val root = new EndpointsAgent(system)
+    private val root = new EndpointsAgent(system)
   
     // we register this bootstrap actor with the RootEndpoint, and have
     // it dispatch requests for us
@@ -37,10 +37,9 @@ class WebServer(config: WebWordsConfig, servername:String = "default") {
             throw new IllegalStateException("can't start http server twice")
 
 //        system.actorOf(Props[RootEndpoint], "root")
-        
-        system.actorOf(Props(new WebBootstrap(config)) , "bootstrap")
-        root.attach("bootstrap", {case _ => EndpointActor(bootstrap)})
-        
+//        system.actorOf(Props(new WebBootstrap(root, config)) , "bootstrap")
+//        root.attach("bootstrap", {case _ => println("HOHOHO"); EndpointActor(bootstrap)})
+//        root.attach("/", {case _ => println("HOHOHO"); EndpointActor(bootstrap)})        
         val server = new Server(config.port.getOrElse(8080))
 
         // here we pull in the servlet container; if we didn't want to use AkkaMistServlet,
@@ -50,12 +49,12 @@ class WebServer(config: WebWordsConfig, servername:String = "default") {
         // AkkaMistServlet forwards requests to the rootEndpoint which
         // in turn forwards them to our bootstrap actor.
 //        handler.addServlet(new ServletHolder(new AkkaMistServlet()), "/*")
-        handler.addServlet(new ServletHolder(new AkkaHttpServlet()), "/*")
-
+//        handler.addServlet(new ServletHolder(new AkkaHttpServlet()), "/*")
+        handler.addServlet(new ServletHolder(new BootStrapServlet(config)), "/*")
+        
         server.setHandler(handler)
 
         server.start()
-
         maybeServer = Some(server)
     }
 

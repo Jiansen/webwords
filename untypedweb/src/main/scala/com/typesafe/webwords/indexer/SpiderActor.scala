@@ -6,12 +6,10 @@ import java.net.URL
 
 import com.typesafe.webwords.common._
 
-import akka.actor.{_ }
-// import akka.actor.Actor.actorOf
+import akka.actor._
 import akka.dispatch._
-// import akka.event.EventHandler
 import akka.actor.ActorLogging
-import scala.concurrent.{Await}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.{Future, promise, future}
 import akka.pattern.ask
@@ -34,17 +32,15 @@ case class Spidered(url: URL, index: Index)
  */
 class SpiderActor
     extends Actor {
-    private val indexer = context.actorOf(Props[IndexerActor])
-    private val fetcher = context.actorOf(Props[URLFetcher])
-/*
+    private val indexer = context.actorFor("./indexer")
+    private val fetcher = context.actorFor("./fetcher")
+    
     override def preStart() = {
-        indexer.start
-        fetcher.start
+      context.actorOf(Props[IndexerActor], "indexer")
+      context.actorOf(Props[URLFetcher], "fetcher")
     }
-*/
+
     override def postStop() = {
-  //      indexer.stop
-  //      fetcher.stop
       context.stop(indexer)
       context.stop(fetcher)
     }
@@ -52,7 +48,7 @@ class SpiderActor
     override def receive = {
         case request: SpiderRequest => request match {
             case Spider(url) =>
-//                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))
+//                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))              
               sender ! SpiderActor.spider(indexer, fetcher, url)
         }
     }
@@ -63,7 +59,6 @@ object SpiderActor {
     implicit val timeout = akka.util.Timeout(5 second)
         
     private def fetchBody(fetcher: ActorRef, url: URL): Future[String] = {
-
         val fetched = fetcher ? FetchURL(url)
         // there may be a cleaner solution here than returning an empty
         // document on failure, but let's go with this for now

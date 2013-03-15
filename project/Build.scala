@@ -31,6 +31,8 @@ object Resolvers {
     val newMotion = "NewMotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
 }
 
+// classpathTypes += "orbit"
+
 object Dependencies {
   object V {
     val Akka      = "2.1.1"
@@ -40,17 +42,16 @@ object Dependencies {
     val slf4jSimple = "com.typesafe.akka"   %% "akka-slf4j"  % V.Akka
     val slf4jSimpleTest = slf4jSimple % "test"
 
-    private val jettyVersion = "7.4.0.v20110414"
+    private val jettyVersion = "9.0.0.M0"
 //    val jettyVersion = "9.0.0.v20130308"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % jettyVersion
     val jettyServlet = "org.eclipse.jetty" % "jetty-servlet" % jettyVersion
     val jettyServerTest = jettyServer % "test"
-//    val jettyOrbit = "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container" artifacts (Artifact("javax.servlet", "jar", "jar"))
-
+    val jettyOrbit = "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" artifacts (    Artifact("javax.servlet", "jar", "jar")  )
     val akka     = "com.typesafe.akka"   %% "akka-actor"  	% V.Akka
     val akkaHttp = "com.thenewmotion.akka" %% "akka-http" % "1.0.0"
     val akkaAmqp = "com.github.sstone" %% "akka-amqp-proxies" % "1.1"
-    val asyncHttp = "com.ning" % "async-http-client" % "1.7.8"
+    val asyncHttp = "com.ning" % "async-http-client" % "1.7.12"
     val jsoup = "org.jsoup" % "jsoup" % "1.6.3"
     val casbahCore = "org.mongodb" %% "casbah-core" % "2.5.0"
 }
@@ -74,7 +75,7 @@ object WebWordsBuild extends Build {
                            file("untypedweb"),
                            settings = projectSettings ++
                            StartScriptPlugin.startScriptForClassesSettings ++
-                           Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore, jettyServer, jettyServlet, slf4jSimple, jsoup, akkaHttp))) 
+                           Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore, jettyServer, jettyServlet, jettyOrbit, slf4jSimple, jsoup, akkaHttp))) 
 
 /*
     lazy val web = Project("webwords-web",

@@ -101,7 +101,7 @@ class IndexStorageActor(mongoURI: Option[String])
     }
 
 //    override def instance = context.actorOf(Props(new Worker(cache.get)))
-    def instance = context.actorOf(Props(new Worker(cache.get)))    
+//    def instance = context.actorOf(Props(new Worker(cache.get)))
 
     override def receive = {
         case DropCache =>

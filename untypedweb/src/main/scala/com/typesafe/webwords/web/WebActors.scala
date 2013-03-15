@@ -13,6 +13,8 @@ import java.net.MalformedURLException
 import java.net.URISyntaxException
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import com.thenewmotion.akka.http.Async.Complete
+import com.thenewmotion.akka.http._
+import com.thenewmotion.akka.http.Endpoints._
 
 // this is just here for testing a simple case.
 class HelloActor extends Actor {
@@ -32,11 +34,57 @@ class HelloActor extends Actor {
           res.getWriter.write("hello!")
           res.getWriter.close()
       }
-
       //passing `future` to AsyncActor, created for this AsyncContext
       sender ! Complete(future)
   }
 }
+
+
+class BootStrapServlet(config: WebWordsConfig) extends AkkaHttpServlet with StaticEndpoints {
+
+  var helloActor: Option[ActorRef] = None
+  var wordsActor: Option[ActorRef] = None
+  var custom404Actor: Option[ActorRef] = None
+
+  val helloWorldFunction = RequestResponse {
+    req =>
+      
+    // doing some heavy work here then
+    // creating function responsible for completing request, this function might not be called if request expired
+      FutureResponse {
+        res =>
+          res.getWriter.write(
+            <html>
+              <body>
+                <h1>Hello World</h1>
+                <h3>endpoint function</h3>
+              </body>
+            </html>.toString())
+          res.getWriter.close()
+      }
+  }
+
+
+  override def onSystemInit(system: ActorSystem, endpoints: EndpointsAgent) {
+    super.onSystemInit(system, endpoints)
+    helloActor = Some(system.actorOf(Props[HelloActor], "hello"))
+    wordsActor = Some(system.actorOf(Props(new WordsActor(config)), "words"))
+//    custom404Actor = Some(system.actorOf(Props[Custom404Actor]))
+  }
+
+  def providers = {
+    //endpoint as a function will be used for "/" and "/function" urls
+//    case "/" | "/function" => helloWorldFunction
+    //endpoint as an actor will be used for "/actor" url
+//    case "/actor" => helloActor.get
+    case "/" | "words" => wordsActor.get
+    case _ => custom404Actor.get
+  }
+}
+
+
+
+
 
 // we send any paths we don't recognize to this one.
 class Custom404Actor extends Actor {
@@ -133,8 +181,8 @@ class WordsActor(config: WebWordsConfig) extends Actor {
                 }
             </ol>
         </div>
-    }
 
+    }
     def wordsPage(formNode: xml.NodeSeq, resultsNode: xml.NodeSeq) = {
         <html>
             <head>
@@ -248,12 +296,12 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         context.stop(client)
     }
 }
-
 // This actor simply delegates to the real handlers.
+
 // There are extra libraries such as Spray that make this less typing:
 //   https://github.com/spray/spray/wiki
 // but for this example, showing how you would do it manually.
-class WebBootstrap(config: WebWordsConfig) extends Actor {
+class WebBootstrap(root:EndpointsAgent, config: WebWordsConfig) extends Actor {
 //class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor {// with Endpoint {
     private val handlers = Map(
         "/hello" -> context.actorFor("./hello"),
@@ -303,6 +351,10 @@ class WebBootstrap(config: WebWordsConfig) extends Actor {
         })
         * 
         */
+      root.attach(
+          "/", {case m => 
+            println("=== "+m+" ===")
+        Endpoint(handlers("/words"))})
     }
 
     override def postStop = {

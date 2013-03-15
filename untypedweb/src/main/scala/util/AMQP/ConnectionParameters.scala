@@ -16,6 +16,6 @@ object ConnectionParameters{
   }
   
   def apply(addresses: Array[Address], username: String, password: String, virtualHost: String):ConnectionParameters = {
-    ConnectionParameters(addresses, username, password, virtualHost, 1000L, None)
+    ConnectionParameters(addresses, username, password, virtualHost, 5000L, None)
   }
 }

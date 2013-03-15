@@ -11,15 +11,13 @@ import com.typesafe.webwords.common.AMQPCheck
  * storing results in a persistent cache (kept in MongoDB).
  */
 object Main extends App {
-  val system = ActorSystem("WebWordIndexer")
+    val system = ActorSystem("WebWordIndexer")
     val config = WebWordsConfig()
 
     if (!AMQPCheck.check(config))
         throw new Exception("AMQP not working (start the AMQP service?)")
 
-    val worker = system.actorOf(Props(new WorkerActor(config)))
-
-//    worker.start
+    val worker = system.actorOf(Props(new WorkerActor(config)), "worker")
 
     // kind of a hack maybe.
     val waitForever = new CountDownLatch(1)

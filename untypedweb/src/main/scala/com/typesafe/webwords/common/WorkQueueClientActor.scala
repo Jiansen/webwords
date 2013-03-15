@@ -7,6 +7,7 @@ import com.github.sstone.amqp.RpcClient
 
 import akka.pattern.ask
 import scala.concurrent.duration._
+import com.github.sstone.amqp.RabbitMQConnection
 /**
  * This actor wraps the work queue on the "client" side (in the web process).
  */
@@ -33,7 +34,11 @@ class WorkQueueClientActor(url: Option[String] = None)
         case m =>
             super.receive.apply(m)
     }
-
+    override def createRpc(connection:RabbitMQConnection) = {
+      val rpcClient = connection.createRpcClient()
+      Amqp.waitForConnection(context.system, rpcClient).await()
+    }
+/*
     override def createRpc(connectionActor: ActorRef) = {
       /*
         val serializer =
@@ -43,7 +48,7 @@ class WorkQueueClientActor(url: Option[String] = None)
         */
       rpcClient = Some(context.actorOf(Props(new RpcClient() )))
     }
-
+*/
     override def destroyRpc = {
         rpcClient foreach { c => context.stop(c) }
         rpcClient = None

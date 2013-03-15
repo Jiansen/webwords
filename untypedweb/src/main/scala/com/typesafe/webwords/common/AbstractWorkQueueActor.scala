@@ -5,14 +5,15 @@ import java.net.URLEncoder
 import java.net.URLDecoder
 import akka.actor._
 import com.github.sstone.amqp
-//import com.github.sstone.amqp.Amqp
-//import com.github.sstone.amqp.Amqp.ConnectionParameters
-//import com.github.sstone.amqp.rpc.RPC
-import com.github.sstone.amqp.{Amqp, RpcClient, RpcServer, RabbitMQConnection}
-import com.github.sstone.amqp.Amqp.{ChannelParameters}
+import com.github.sstone.amqp._
+//import com.github.sstone.amqp.{Amqp, RpcClient, RpcServer, RabbitMQConnection}
+//import com.github.sstone.amqp.Amqp.{ChannelParameters}
+import com.github.sstone.amqp.Amqp._
+import com.github.sstone.amqp.RpcServer._
 import com.rabbitmq.client.Address
 import util.AMQP.{ToBinary, FromBinary}
 import util.AMQP.ConnectionParameters
+import scala.concurrent.Future
 
 sealed trait WorkQueueMessage {
     self: Product =>
@@ -101,7 +102,7 @@ object WorkQueueReply {
  */
 abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
     extends Actor {
-  val log = akka.event.Logging(context.system, this)
+    val log = akka.event.Logging(context.system, this)
     protected[this] val info = log.info( _: String)
 
     private[this] var connectionActor: Option[ActorRef] = None
@@ -119,7 +120,8 @@ abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
         */
     }
 
-    protected def createRpc(connection: ActorRef): Unit
+//    protected def createRpc(connection: ActorRef): Unit
+    protected def createRpc(connection: RabbitMQConnection): Unit
     protected def destroyRpc: Unit
 
     protected val rpcExchangeName = "webwords_rpc"
@@ -128,7 +130,10 @@ abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
         val params = AbstractWorkQueueActor.parseAmqpUrl(amqpUrl.getOrElse(AbstractWorkQueueActor.DEFAULT_AMQP_URL))
 //        connectionActor = Some(AMQP.newConnection(params.copy(connectionCallback = Some(self))))
 //        createRpc(connectionActor.get)
-        val conn = new RabbitMQConnection(host = "localhost", name = "Connection")(context.system)
+        val conn = new RabbitMQConnection(host ="localhost", name = rpcExchangeName)(context.system)
+
+        // create RPC server and client
+        createRpc(conn)
     }
 
     override def postStop = {
