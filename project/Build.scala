@@ -24,7 +24,7 @@ object BuildSettings {
 }
 
 object Resolvers {
-    val sonatypeRepo = "Sonatype Release" at "https://oss.sonatype.org/content/repositories/releases"
+    val sonatypeRepo = "Sonatype Release" at "https://oss.sonatype.org/content/repositories/releases/"
     val jbossRepo = "JBoss" at "http://repository.jboss.org/nexus/content/groups/public/"
     val akkaRepo = "Akka" at "http://repo.akka.io/repository/"
 //    val typesafe = "Typesafe" at "http://repo.typesafe.com/typesafe/repo/"
@@ -49,7 +49,7 @@ object Dependencies {
 
     val akka     = "com.typesafe.akka"   %% "akka-actor"  	% V.Akka
     val akkaHttp = "com.thenewmotion.akka" %% "akka-http" % "1.0.0"
-    val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.3"
+    val akkaAmqp = "com.github.sstone" %% "akka-amqp-proxies" % "1.1"
     val asyncHttp = "com.ning" % "async-http-client" % "1.7.8"
     val jsoup = "org.jsoup" % "jsoup" % "1.6.3"
     val casbahCore = "org.mongodb" %% "casbah-core" % "2.5.0"
