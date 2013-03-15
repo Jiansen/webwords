@@ -28,6 +28,7 @@ object Resolvers {
     val jbossRepo = "JBoss" at "http://repository.jboss.org/nexus/content/groups/public/"
     val akkaRepo = "Akka" at "http://repo.akka.io/repository/"
 //    val typesafe = "Typesafe" at "http://repo.typesafe.com/typesafe/repo/"
+    val newMotion = "NewMotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
 }
 
 object Dependencies {
@@ -47,7 +48,8 @@ object Dependencies {
 //    val jettyOrbit = "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container" artifacts (Artifact("javax.servlet", "jar", "jar"))
 
     val akka     = "com.typesafe.akka"   %% "akka-actor"  	% V.Akka
-    val akkaHttp = "com.typesafe.akka" %% "akka-http" % "1.0.0"
+//    val akkaHttp = "com.typesafe.akka" %% "akka-http" % "1.0.0"
+    val akkaHttp = "com.thenewmotion.akka" %% "akka-http" % "1.0.0"
 //    val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.2"
     val akkaAmqp = "com.github.sstone" %% "akka-amqp-proxies" % "1.1"
 
