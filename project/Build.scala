@@ -71,8 +71,16 @@ object WebWordsBuild extends Build {
                             settings = projectSettings ++
                             Seq(
                                 StartScriptPlugin.stage in Compile := Unit
-                            )) aggregate(common, web, indexer)
+//                            )) aggregate(common, web, indexer)
+                            )) aggregate(untypedweb)
 
+    lazy val untypedweb = Project("untypedweb",
+                           file("untypedweb"),
+                           settings = projectSettings ++
+                           StartScriptPlugin.startScriptForClassesSettings ++
+                           Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore, jettyServer, jettyServlet, slf4jSimple, jsoup))) 
+
+/*
     lazy val web = Project("webwords-web",
                            file("web"),
                            settings = projectSettings ++
@@ -90,5 +98,6 @@ object WebWordsBuild extends Build {
                            file("common"),
                            settings = projectSettings ++
                            Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore)))
+*/
 }
 
