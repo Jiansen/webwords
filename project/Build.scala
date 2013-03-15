@@ -62,14 +62,14 @@ object WebWordsBuild extends Build {
     import Resolvers._
 
     override lazy val settings = super.settings ++ globalSettings
-
+/*
     lazy val root = Project("webwords",
                             file("."),
                             settings = projectSettings ++
                             Seq(
                                 StartScriptPlugin.stage in Compile := Unit
                             )) aggregate(untypedweb)
-
+*/
     lazy val untypedweb = Project("untypedweb",
                            file("untypedweb"),
                            settings = projectSettings ++
