@@ -11,7 +11,7 @@ import com.typesafe.webwords.common.AMQPCheck
  * storing results in a persistent cache (kept in MongoDB).
  */
 object Main extends App {
-  val system = ActorSystem("WebWord Indexer")
+  val system = ActorSystem("WebWordIndexer")
     val config = WebWordsConfig()
 
     if (!AMQPCheck.check(config))

@@ -13,7 +13,7 @@ import akka.dispatch._
 import akka.actor.ActorLogging
 import scala.concurrent.{Await}
 import scala.concurrent.duration._
-import scala.concurrent.{Future, promise}
+import scala.concurrent.{Future, promise, future}
 import akka.pattern.ask
 
 sealed trait SpiderRequest
@@ -176,10 +176,10 @@ object SpiderActor {
     private[indexer] def spider(indexer: ActorRef, fetcher: ActorRef, url: URL): Future[Spidered] = {
 //        implicit val dispatcher = indexer.dispatcher
         fetchIndex(indexer, fetcher, url) flatMap { rootIndex =>
-            val childIndexes = childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, fetcher, _) }
-            val rootIndexFuture = promise[Index] // some 1.2 bug: AlreadyCompletedFuture breaks
-            rootIndexFuture success rootIndex
-            val allIndexFutures = childIndexes ++ Iterator(rootIndexFuture)
+            val childIndexes:Seq[Future[Index]] = childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, fetcher, _) }
+            val rootIndexFuture = (promise[Index] success rootIndex).future// some 1.2 bug: AlreadyCompletedFuture breaks
+
+            val allIndexFutures:Seq[Future[Index]] = childIndexes ++ Iterator(rootIndexFuture)
             val allIndexes = Future.sequence(allIndexFutures)
             val combinedIndex = allIndexes map { indexes =>
                 combineIndexes(indexes)

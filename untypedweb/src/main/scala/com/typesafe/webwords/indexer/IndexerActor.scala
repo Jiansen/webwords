@@ -33,7 +33,12 @@ class IndexerActor
 //    override def instance = actorOf(new Worker)
 
 //    override def receive = _route
-
+  override def receive = {
+    case m => 
+      // TODO: fix me
+      println("fix IndexerActor: "+m)
+  }
+  
     private class Worker extends Actor {
         import IndexerActor._
 

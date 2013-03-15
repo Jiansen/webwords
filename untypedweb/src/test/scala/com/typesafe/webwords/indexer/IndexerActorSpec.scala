@@ -4,10 +4,14 @@ import org.scalatest.matchers._
 import org.scalatest._
 import scala.io.Source
 import akka.actor._
-import akka.actor.Actor.actorOf
 import java.net.URL
+import akka.pattern.ask
+import scala.concurrent.duration._
+import scala.concurrent.Await
 
 class IndexerActorSpec extends FlatSpec with ShouldMatchers {
+  val system = ActorSystem("IndexerActorSpec")
+  implicit val timeout = akka.util.Timeout(10 second)
     behavior of "splitWords"
 
     it should "split one word" in {
@@ -85,19 +89,19 @@ class IndexerActorSpec extends FlatSpec with ShouldMatchers {
 
     it should "index some sample HTML" in {
         val html = load("Functional_programming.html")
-        val indexer = actorOf[IndexerActor].start
-        val result = (indexer ? IndexHtml(new URL("http://en.wikipedia.org/wiki/"), html)).as[IndexedHtml].get
+        val indexer = system.actorOf(Props[IndexerActor])
+        val result = Await.result((indexer ? IndexHtml(new URL("http://en.wikipedia.org/wiki/"), html)).mapTo[IndexedHtml], 10 second)
         result.index.links.size should be(593)
         result.index.wordCounts.toSeq should be(wordsInSamples("Functional_programming.html"))
     }
 
     it should "index a lot of HTML concurrently" in {
         val html = load("Functional_programming.html")
-        val indexer = actorOf[IndexerActor].start
+        val indexer = system.actorOf(Props[IndexerActor])
         val futures = for (i <- 1 to 20)
             yield indexer ? IndexHtml(new URL("http://en.wikipedia.org/wiki/"), html)
         for (f <- futures) {
-            val result = f.as[IndexedHtml].get
+            val result = Await.result(f.mapTo[IndexedHtml], 10 second)
             result.index.links.size should be(593)
             result.index.wordCounts.toSeq should be(wordsInSamples("Functional_programming.html"))
         }

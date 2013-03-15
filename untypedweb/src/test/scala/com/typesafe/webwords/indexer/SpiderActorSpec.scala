@@ -2,13 +2,19 @@ package com.typesafe.webwords.indexer
 
 import org.scalatest.matchers._
 import org.scalatest._
-import akka.actor.{ Index => _, _ }
-import akka.actor.Actor.actorOf
+import akka.actor._
 import java.net.URL
 import com.typesafe.webwords.common._
 import java.net.URI
+import akka.pattern.ask
+import scala.concurrent.duration._
+import scala.concurrent.Await
 
 class SpiderActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAll {
+  val system = ActorSystem("SpiderActorSpec")
+  implicit val timeout = akka.util.Timeout(10 second) 
+  import scala.concurrent.ExecutionContext.Implicits.global
+  
     var httpServer: TestHttpServer = null
 
     override def beforeAll = {
@@ -24,9 +30,9 @@ class SpiderActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
     behavior of "local http server used to test spider"
 
     it should "fetch our test resource" in {
-        val fetcher = actorOf[URLFetcher].start
+        val fetcher = system.actorOf(Props[URLFetcher])
         val f = fetcher ? FetchURL(httpServer.resolve("/resource/Functional_programming.html"))
-        f.get match {
+        Await.result(f, 10 second) match {
             case URLFetched(status, headers, body) =>
                 if (status != 200)
                     println(body)
@@ -34,7 +40,7 @@ class SpiderActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
             case _ =>
                 throw new Exception("Wrong reply message from fetcher")
         }
-        fetcher.stop
+        system.stop(fetcher)
     }
 
     behavior of "utility functions"
@@ -116,14 +122,14 @@ class SpiderActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
 
     it should "spider from test http server" in {
         val url = httpServer.resolve("/resource/ToSpider.html")
-        val spider = actorOf[SpiderActor].start
+        val spider = system.actorOf(Props[SpiderActor])        
         val indexFuture = (spider ? Spider(url)) map {
             case Spidered(url, index) =>
                 index
             case whatever =>
                 throw new Exception("Got bad result from Spider: " + whatever)
         }
-        val index = indexFuture.get
+        val index = Await.result(indexFuture, 10 second)
 
         index.wordCounts.size should be(50)
         val nowheres = (index.links filter { link => link._2.endsWith("/nowhere") } map { _._1 }).sorted

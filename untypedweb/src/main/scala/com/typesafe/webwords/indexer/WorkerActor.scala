@@ -9,7 +9,7 @@ import java.net.URL
 
 import akka.actor.ActorLogging
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future, promise}
+import scala.concurrent.{Await, Future, promise, Promise}
 import akka.pattern.ask
 import scala.util.{Try, Success, Failure}
 
@@ -24,7 +24,7 @@ class WorkerActor(config: WebWordsConfig)
 
     implicit val timeout = akka.util.Timeout(5 second)
     import scala.concurrent.ExecutionContext.Implicits.global
-    override def handleRequest(request: WorkQueueRequest): Future[WorkQueueReply] = {
+    override def handleRequest(request: WorkQueueRequest): Promise[WorkQueueReply] = {
         request match {
             case SpiderAndCache(url) =>
                 // This "neverFailsFuture" is sort of a hacky hotfix; AMQP setup
@@ -49,7 +49,7 @@ class WorkerActor(config: WebWordsConfig)
 //                        EventHandler.info(this, "Exception spidering '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
                         neverFailsFuture success SpideredAndCached(url)
                 }
-                neverFailsFuture.future
+                neverFailsFuture
         }
     }
 

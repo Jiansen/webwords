@@ -33,7 +33,7 @@ object Resolvers {
 
 object Dependencies {
   object V {
-    val Akka      = "2.1.0"
+    val Akka      = "2.1.1"
   }
 
     val scalatest = "org.scalatest"       %% "scalatest"         % "1.9.1" % "test"
@@ -48,10 +48,15 @@ object Dependencies {
 //    val jettyOrbit = "org.eclipse.jetty.orbit" % "javax.servlet" % "3.0.0.v201112011016" % "container" artifacts (Artifact("javax.servlet", "jar", "jar"))
 
     val akka     = "com.typesafe.akka"   %% "akka-actor"  	% V.Akka
+<<<<<<< HEAD
 //    val akkaHttp = "com.typesafe.akka" %% "akka-http" % "1.0.0"
     val akkaHttp = "com.thenewmotion.akka" %% "akka-http" % "1.0.0"
 //    val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.2"
     val akkaAmqp = "com.github.sstone" %% "akka-amqp-proxies" % "1.1"
+=======
+    val akkaHttp = "com.typesafe.akka" %% "akka-http" % "1.0.0"
+    val akkaAmqp = "se.scalablesolutions.akka" % "akka-amqp" % "1.3"
+>>>>>>> 4543d58b08f791c789971ce0f260950138f89119
 
     val asyncHttp = "com.ning" % "async-http-client" % "1.7.8"
 
@@ -73,6 +78,7 @@ object WebWordsBuild extends Build {
                             settings = projectSettings ++
                             Seq(
                                 StartScriptPlugin.stage in Compile := Unit
+<<<<<<< HEAD
 //                            )) aggregate(common, web, indexer)
                             )) aggregate(untypedweb)
 
@@ -85,19 +91,25 @@ object WebWordsBuild extends Build {
 /*
     lazy val web = Project("webwords-web",
                            file("web"),
+=======
+                            )) aggregate(webwords_common, webwords_web, webwords_indexer)
+
+    lazy val webwords_web = Project("webwords-web",
+                           file("webwords-web"),
+>>>>>>> 4543d58b08f791c789971ce0f260950138f89119
                            settings = projectSettings ++
                            StartScriptPlugin.startScriptForClassesSettings ++
 //                           Seq(libraryDependencies ++= Seq(akkaHttp, jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
-                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(common % "compile->compile;test->test")
+                           Seq(libraryDependencies ++= Seq(jettyServer, jettyServlet, slf4jSimple))) dependsOn(webwords_common % "compile->compile;test->test")
 
-    lazy val indexer = Project("webwords-indexer",
-                              file("indexer"),
+    lazy val webwords_indexer = Project("webwords-indexer",
+                              file("webwords-indexer"),
                               settings = projectSettings ++
                               StartScriptPlugin.startScriptForClassesSettings ++
-                              Seq(libraryDependencies ++= Seq(jsoup))) dependsOn(common % "compile->compile;test->test")
+                              Seq(libraryDependencies ++= Seq(jsoup))) dependsOn(webwords_common % "compile->compile;test->test")
 
-    lazy val common = Project("webwords-common",
-                           file("common"),
+    lazy val webwords_common = Project("webwords-common",
+                           file("webwords-common"),
                            settings = projectSettings ++
                            Seq(libraryDependencies ++= Seq(akka, akkaAmqp, asyncHttp, casbahCore)))
 */

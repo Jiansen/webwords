@@ -11,31 +11,52 @@ import java.net.URL
 import java.net.URI
 import java.net.MalformedURLException
 import java.net.URISyntaxException
-import javax.servlet.http.HttpServletResponse
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
+import com.thenewmotion.akka.http.Async.Complete
 
 // this is just here for testing a simple case.
 class HelloActor extends Actor {
+  /*
     override def receive = {
         case get: Get =>
             get OK "hello!"
         case request: RequestMethod =>
             request NotAllowed "unsupported request"
     }
+    * 
+    */
+  def receive = {
+    case req: HttpServletRequest =>
+      val future = FutureResponse {
+        res =>
+          res.getWriter.write("hello!")
+          res.getWriter.close()
+      }
+
+      //passing `future` to AsyncActor, created for this AsyncContext
+      sender ! Complete(future)
+  }
 }
 
 // we send any paths we don't recognize to this one.
 class Custom404Actor extends Actor {
     override def receive = {
+      //TODO: fix me
+      case m => println("Custom404:recieve "+m)
+      /*
         case request: RequestMethod =>
             // you could do something nicer ;-) this is just an example
             request NotFound "Nothing here!"
+            * 
+            */
+//      case request
     }
 }
 
 // this actor handles the main page.
 class WordsActor(config: WebWordsConfig) extends Actor {
-    private val client = context.actorOf(new ClientActor(config))
-
+    private val client = context.actorFor("./client")
+/*
     case class Finish(request: RequestMethod, url: String, index: Option[Index],
         cacheHit: Boolean, startTime: Long)
 
@@ -203,22 +224,28 @@ class WordsActor(config: WebWordsConfig) extends Actor {
             completeWithHtml(get, html)
         }
     }
-
+*/
     override def receive = {
+          case req  =>
+            // TODO: fix me
+            println("Fix WordsActor: received: "+req)
+      /*
         case get: Get =>
             handleGet(get)
         case request: RequestMethod =>
             request NotAllowed "unsupported request"
         case finish: Finish =>
             handleFinish(finish)
+            * 
+            */
     }
 
     override def preStart = {
-        client.start
+        context.actorOf(Props(new ClientActor(config)), "client") 
     }
 
     override def postStop = {
-        client.stop
+        context.stop(client)
     }
 }
 
@@ -226,12 +253,13 @@ class WordsActor(config: WebWordsConfig) extends Actor {
 // There are extra libraries such as Spray that make this less typing:
 //   https://github.com/spray/spray/wiki
 // but for this example, showing how you would do it manually.
-class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor with Endpoint {
+class WebBootstrap(config: WebWordsConfig) extends Actor {
+//class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor {// with Endpoint {
     private val handlers = Map(
-        "/hello" -> actorOf[HelloActor],
-        "/words" -> actorOf(new WordsActor(config)))
+        "/hello" -> context.actorFor("./hello"),
+        "/words" -> context.actorFor("./words"))
 
-    private val custom404 = actorOf[Custom404Actor]
+    private val custom404 = context.actorFor("./custom404")
 
     // Caution: this callback does not run in the actor thread,
     // so has to be thread-safe. We keep it simple and only touch
@@ -245,17 +273,27 @@ class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor
             custom404
     }
 
-    override def receive = handleHttpRequest
+//    override def receive = handleHttpRequest
+    override def receive = {
+      case req =>
+        // TODO: fixme
+        println("Fix WebBootstrap: "+req)
+    }
 
     override def preStart = {
         // start up our handlers
+      /*
         handlers.values foreach { _.start }
         custom404.start
-
+       */
+      context.actorOf(Props[HelloActor], "hello")
+      context.actorOf(Props(new WordsActor(config)), "words")
+      context.actorOf(Props[Custom404Actor], "custom404")
         // register ourselves with the akka-http RootEndpoint actor.
         // In Akka 2.0, Endpoint.Attach takes a partial function,
         // in 1.2 it still takes two separate functions.
         // So in 2.0 this can just be Endpoint.Attach(handlerFactory)
+      /*
         rootEndpoint ! Endpoint.Attach({
             path =>
                 handlerFactory.isDefinedAt(path)
@@ -263,10 +301,12 @@ class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor
             path =>
                 handlerFactory(path)
         })
+        * 
+        */
     }
 
     override def postStop = {
-        handlers.values foreach { _.stop }
-        custom404.stop
+        handlers.values foreach { v => context.stop(v) }
+        context.stop(custom404)
     }
 }
