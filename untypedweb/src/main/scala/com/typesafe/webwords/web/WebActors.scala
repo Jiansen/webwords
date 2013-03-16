@@ -252,6 +252,8 @@ class WordsActor(config: WebWordsConfig) extends Actor {
             res.getWriter.write("HTTP Method "+m+" Not Supported")
             res.getWriter.close()
         }
+        case finish: Finish =>
+            handleFinish(finish)        
     }
 
     override def preStart = {
@@ -262,71 +264,3 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         context.stop(client)
     }
 }
-// This actor simply delegates to the real handlers.
-
-// There are extra libraries such as Spray that make this less typing:
-//   https://github.com/spray/spray/wiki
-// but for this example, showing how you would do it manually.
-/*
-class WebBootstrap(root:EndpointsAgent, config: WebWordsConfig) extends Actor {
-//class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor {// with Endpoint {
-    private val handlers = Map(
-        "/hello" -> context.actorFor("./hello"),
-        "/words" -> context.actorFor("./words"))
-
-    private val custom404 = context.actorFor("./custom404")
-
-    // Caution: this callback does not run in the actor thread,
-    // so has to be thread-safe. We keep it simple and only touch
-    // immutable values so there's nothing to worry about.
-    private val handlerFactory: PartialFunction[String, ActorRef] = {
-        case path if handlers.contains(path) =>
-            handlers(path)
-        case "/" =>
-            handlers("/words")
-        case path: String =>
-            custom404
-    }
-
-//    override def receive = handleHttpRequest
-    override def receive = {
-      case req =>
-        // TODO: fixme
-        println("Fix WebBootstrap: "+req)
-    }
-
-    override def preStart = {
-        // start up our handlers
-      /*
-        handlers.values foreach { _.start }
-        custom404.start
-       */
-      context.actorOf(Props[HelloActor], "hello")
-      context.actorOf(Props(new WordsActor(config)), "words")
-      context.actorOf(Props[Custom404Actor], "custom404")
-        // register ourselves with the akka-http RootEndpoint actor.
-        // In Akka 2.0, Endpoint.Attach takes a partial function,
-        // in 1.2 it still takes two separate functions.
-        // So in 2.0 this can just be Endpoint.Attach(handlerFactory)
-      /*
-        rootEndpoint ! Endpoint.Attach({
-            path =>
-                handlerFactory.isDefinedAt(path)
-        }, {
-            path =>
-                handlerFactory(path)
-        })
-        * 
-        */
-      root.attach(
-          "/", {case m => 
-            println("=== "+m+" ===")
-        Endpoint(handlers("/words"))})
-    }
-
-    override def postStop = {
-        handlers.values foreach { v => context.stop(v) }
-        context.stop(custom404)
-    }
-}
-*/
