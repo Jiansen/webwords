@@ -15,27 +15,24 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import com.thenewmotion.akka.http.Async.Complete
 import com.thenewmotion.akka.http._
 import com.thenewmotion.akka.http.Endpoints._
+import org.eclipse.jetty.server.Request
+import akka.pattern.ask
+import scala.concurrent.duration._
 
 // this is just here for testing a simple case.
 class HelloActor extends Actor {
-  /*
-    override def receive = {
-        case get: Get =>
-            get OK "hello!"
-        case request: RequestMethod =>
-            request NotAllowed "unsupported request"
-    }
-    * 
-    */
   def receive = {
-    case req: HttpServletRequest =>
-      val future = FutureResponse {
-        res =>
-          res.getWriter.write("hello!")
+        case request:Request =>
+            // you could do something nicer ;-) this is just an example
+          val res = request.getResponse()
+          res.getWriter.write(
+            <html>
+              <body>
+                <h1>Hello World</h1>
+                <h3>endpoint function</h3>
+              </body>
+            </html>.toString())
           res.getWriter.close()
-      }
-      //passing `future` to AsyncActor, created for this AsyncContext
-      sender ! Complete(future)
   }
 }
 
@@ -46,66 +43,36 @@ class BootStrapServlet(config: WebWordsConfig) extends AkkaHttpServlet with Stat
   var wordsActor: Option[ActorRef] = None
   var custom404Actor: Option[ActorRef] = None
 
-  val helloWorldFunction = RequestResponse {
-    req =>
-      
-    // doing some heavy work here then
-    // creating function responsible for completing request, this function might not be called if request expired
-      FutureResponse {
-        res =>
-          res.getWriter.write(
-            <html>
-              <body>
-                <h1>Hello World</h1>
-                <h3>endpoint function</h3>
-              </body>
-            </html>.toString())
-          res.getWriter.close()
-      }
-  }
-
-
   override def onSystemInit(system: ActorSystem, endpoints: EndpointsAgent) {
     super.onSystemInit(system, endpoints)
     helloActor = Some(system.actorOf(Props[HelloActor], "hello"))
     wordsActor = Some(system.actorOf(Props(new WordsActor(config)), "words"))
-//    custom404Actor = Some(system.actorOf(Props[Custom404Actor]))
+    custom404Actor = Some(system.actorOf(Props[Custom404Actor], "custom404"))
   }
 
   def providers = {
-    //endpoint as a function will be used for "/" and "/function" urls
-//    case "/" | "/function" => helloWorldFunction
-    //endpoint as an actor will be used for "/actor" url
-//    case "/actor" => helloActor.get
-    case "/" | "words" => wordsActor.get
+    case "/" | "/words" => wordsActor.get
+    case "/hello" => helloActor.get 
     case _ => custom404Actor.get
   }
 }
 
-
-
-
-
 // we send any paths we don't recognize to this one.
 class Custom404Actor extends Actor {
     override def receive = {
-      //TODO: fix me
-      case m => println("Custom404:recieve "+m)
-      /*
-        case request: RequestMethod =>
+        case request:Request =>
             // you could do something nicer ;-) this is just an example
-            request NotFound "Nothing here!"
-            * 
-            */
-//      case request
+          val res = request.getResponse()
+          res.getWriter.write("Error 404: Nothing here!")
+          res.getWriter.close()
     }
 }
 
 // this actor handles the main page.
 class WordsActor(config: WebWordsConfig) extends Actor {
     private val client = context.actorFor("./client")
-/*
-    case class Finish(request: RequestMethod, url: String, index: Option[Index],
+
+    case class Finish(request: Request, url: String, index: Option[Index],
         cacheHit: Boolean, startTime: Long)
 
     private def form(url: String, skipCache: Boolean, badUrl: Boolean = false) = {
@@ -204,10 +171,11 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         </html>
     }
 
-    private def completeWithHtml(request: RequestMethod, html: xml.NodeSeq) = {
-        request.response.setContentType("text/html")
-        request.response.setCharacterEncoding("utf-8")
-        request.OK("<!DOCTYPE html>\n" + html)
+    private def completeWithHtml(request: Request, html: xml.NodeSeq) = {
+        request.getResponse.setContentType("text/html")
+        request.getResponse.setCharacterEncoding("utf-8")
+        request.getResponse.getWriter.write("<!DOCTYPE html>\n" + html)
+        request.getResponse.getWriter.close()
     }
 
     private def handleFinish(finish: Finish) = {
@@ -215,11 +183,10 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         finish match {
             case Finish(request, url, Some(index), cacheHit, startTime) =>
                 val html = wordsPage(form(url, skipCache = false), results(url, index, cacheHit, elapsed))
-
                 completeWithHtml(request, html)
-
             case Finish(request, url, None, cacheHit, startTime) =>
-                request.OK("Failed to index url in " + elapsed + "ms (try reloading)")
+                request.getResponse.getWriter.write("Failed to index url in " + elapsed + "ms (try reloading)")
+                request.getResponse.getWriter.close()
         }
     }
 
@@ -243,15 +210,18 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         })
     }
 
-    private def handleGet(get: RequestMethod) = {
-        val skipCacheStr = Option(get.request.getParameter("skipCache")).getOrElse("false")
+    private def handleGet(get: Request) = {
+        val skipCacheStr = Option(get.getParameter("skipCache")).getOrElse("false")
         val skipCache = Seq("true", "on", "checked").contains(skipCacheStr.toLowerCase)
-        val urlStr = Option(get.request.getParameter("url"))
+        val urlStr = Option(get.getParameter("url"))
         val url = parseURL(urlStr.getOrElse(""))
+        
+        import scala.concurrent.ExecutionContext.Implicits.global
 
         if (url.isDefined) {
             val startTime = System.currentTimeMillis
-            val futureGotIndex = client ? GetIndex(url.get.toExternalForm, skipCache)
+            implicit val timeout = akka.util.Timeout(60 second)
+            val futureGotIndex = (client ? GetIndex(url.get.toExternalForm, skipCache)).mapTo[GotIndex]
 
             futureGotIndex foreach {
                 // now we're in another thread, so we just send ourselves
@@ -261,7 +231,7 @@ class WordsActor(config: WebWordsConfig) extends Actor {
             }
 
             // we have to worry about timing out also.
-            futureGotIndex onTimeout { _ =>
+            futureGotIndex onFailure { case _:Throwable =>
                 // again in another thread - most methods on futures are in another thread!
                 self ! Finish(get, url.get.toExternalForm, index = None, cacheHit = false, startTime = startTime)
             }
@@ -272,20 +242,16 @@ class WordsActor(config: WebWordsConfig) extends Actor {
             completeWithHtml(get, html)
         }
     }
-*/
+
     override def receive = {
-          case req  =>
-            // TODO: fix me
-            println("Fix WordsActor: received: "+req)
-      /*
-        case get: Get =>
-            handleGet(get)
-        case request: RequestMethod =>
-            request NotAllowed "unsupported request"
-        case finish: Finish =>
-            handleFinish(finish)
-            * 
-            */
+        case request:Request => request.getMethod() match {
+          case "GET" =>
+            handleGet(request)
+          case m =>
+            val res = request.getResponse()
+            res.getWriter.write("HTTP Method "+m+" Not Supported")
+            res.getWriter.close()
+        }
     }
 
     override def preStart = {
@@ -301,6 +267,7 @@ class WordsActor(config: WebWordsConfig) extends Actor {
 // There are extra libraries such as Spray that make this less typing:
 //   https://github.com/spray/spray/wiki
 // but for this example, showing how you would do it manually.
+/*
 class WebBootstrap(root:EndpointsAgent, config: WebWordsConfig) extends Actor {
 //class WebBootstrap(rootEndpoint: ActorRef, config: WebWordsConfig) extends Actor {// with Endpoint {
     private val handlers = Map(
@@ -362,3 +329,4 @@ class WebBootstrap(root:EndpointsAgent, config: WebWordsConfig) extends Actor {
         context.stop(custom404)
     }
 }
+*/
