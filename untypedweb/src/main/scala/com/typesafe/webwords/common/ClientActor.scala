@@ -27,14 +27,14 @@ class ClientActor(config: WebWordsConfig) extends Actor {
     import ClientActor._
     import ExecutionContext.Implicits.global
     
-    var client:ActorRef = context.actorFor("./client")
-    var cache:ActorRef = context.actorFor("./cache")
+    var client:ActorRef = context.actorFor("client")
+    var cache:ActorRef = context.actorFor("cache")
         
     override def receive = {
         case incoming: ClientActorIncoming =>
             incoming match {
                 case GetIndex(url, skipCache) =>
-
+println("receiving message: "+GetIndex(url, skipCache))
                     // we look in the cache, if that fails, ask spider to
                     // spider and then notify us, and then we look in the
                     // cache again.
@@ -57,18 +57,20 @@ class ClientActor(config: WebWordsConfig) extends Actor {
     }
 
     override def preStart = {
+      println("=== start:"+self)
         client = context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)), "client")
         cache= context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache")
     }
 
     override def postStop = {
+      println("=== stop:"+self)
         context.stop(client)
         context.stop(cache)
     }
 }
 
 object ClientActor {
-    implicit val timeout = akka.util.Timeout(2 second)
+    implicit val timeout = akka.util.Timeout(60 second)
     import ExecutionContext.Implicits.global
     private def getFromCacheOrElse(cache: ActorRef, url: String, cacheHit: Boolean)(fallback: => Future[GotIndex]): Future[GotIndex] = {
         cache ? FetchCachedIndex(url) flatMap {

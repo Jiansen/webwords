@@ -35,8 +35,8 @@ class WorkQueueClientActor(url: Option[String] = None)
             super.receive.apply(m)
     }
     override def createRpc(connection:RabbitMQConnection) = {
-      val rpcClient = connection.createRpcClient()
-      Amqp.waitForConnection(context.system, rpcClient).await()
+      rpcClient = Some(connection.createRpcClient())
+      Amqp.waitForConnection(context.system, rpcClient.get).await()
     }
 /*
     override def createRpc(connectionActor: ActorRef) = {

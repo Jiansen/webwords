@@ -101,7 +101,7 @@ class IndexStorageActor(mongoURI: Option[String])
     }
 
 //    override def instance = context.actorOf(Props(new Worker(cache.get)))
-//    def instance = context.actorOf(Props(new Worker(cache.get)))
+    def instance = context.actorOf(Props(new Worker(cache.get)))
 
     override def receive = {
         case DropCache =>
@@ -115,10 +115,12 @@ class IndexStorageActor(mongoURI: Option[String])
             cache foreach { c => c.drop() }
             recreateCache()
         case m =>
+          instance forward m
             // send other messages to the pool
 //            _route.apply(m)
           // TODO:
           println("IndexStorageActor: fix me!"+m)
+          
     }
 
     private[this] var connection: Option[MongoConnection] = None

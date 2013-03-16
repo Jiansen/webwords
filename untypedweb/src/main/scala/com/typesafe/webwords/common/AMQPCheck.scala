@@ -70,7 +70,7 @@ object AMQPCheck {
         // so we create a new channel each time.
         val exists = try {
             val channel = connection.createChannel()
-println("lala: "+channel)            
+// println("lala: "+channel)            
             try {
                 channel.queueDeclarePassive(name)
             } finally {

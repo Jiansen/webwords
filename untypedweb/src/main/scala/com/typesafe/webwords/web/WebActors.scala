@@ -18,6 +18,7 @@ import com.thenewmotion.akka.http.Endpoints._
 import org.eclipse.jetty.server.Request
 import akka.pattern.ask
 import scala.concurrent.duration._
+import scala.util.{Success, Failure}
 
 // this is just here for testing a simple case.
 class HelloActor extends Actor {
@@ -70,7 +71,7 @@ class Custom404Actor extends Actor {
 
 // this actor handles the main page.
 class WordsActor(config: WebWordsConfig) extends Actor {
-    private val client = context.actorFor("./client")
+    private var client:Option[ActorRef] = None
 
     case class Finish(request: Request, url: String, index: Option[Index],
         cacheHit: Boolean, startTime: Long)
@@ -221,12 +222,22 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         if (url.isDefined) {
             val startTime = System.currentTimeMillis
             implicit val timeout = akka.util.Timeout(60 second)
-            val futureGotIndex = (client ? GetIndex(url.get.toExternalForm, skipCache)).mapTo[GotIndex]
+            val futureGotIndex = (client.get ? GetIndex(url.get.toExternalForm, skipCache)).mapTo[GotIndex]
 
+            futureGotIndex onComplete {
+              case Success(GotIndex(url, indexOption, cacheHit)) =>
+                println("success? "+indexOption)
+                self ! Finish(get, url, indexOption, cacheHit, startTime)
+              case Failure(e) =>
+                println("failed: "+e)
+                self ! Finish(get, url.get.toExternalForm, index = None, cacheHit = false, startTime = startTime)
+            }
+            /*
             futureGotIndex foreach {
                 // now we're in another thread, so we just send ourselves
                 // a message, don't touch actor state
                 case GotIndex(url, indexOption, cacheHit) =>
+                  println("success? "+indexOption)
                     self ! Finish(get, url, indexOption, cacheHit, startTime)
             }
 
@@ -235,6 +246,8 @@ class WordsActor(config: WebWordsConfig) extends Actor {
                 // again in another thread - most methods on futures are in another thread!
                 self ! Finish(get, url.get.toExternalForm, index = None, cacheHit = false, startTime = startTime)
             }
+            * 
+            */
         } else {
             val html = wordsPage(form(urlStr.getOrElse(""), skipCache, badUrl = urlStr.isDefined),
                 resultsNode = xml.NodeSeq.Empty)
@@ -257,10 +270,10 @@ class WordsActor(config: WebWordsConfig) extends Actor {
     }
 
     override def preStart = {
-        context.actorOf(Props(new ClientActor(config)), "client") 
+        client = Some(context.actorOf(Props(new ClientActor(config)), "client") )
     }
 
     override def postStop = {
-        context.stop(client)
+        context.stop(client.get)
     }
 }

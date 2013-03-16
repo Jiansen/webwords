@@ -32,24 +32,24 @@ case class Spidered(url: URL, index: Index)
  */
 class SpiderActor
     extends Actor {
-    private val indexer = context.actorFor("./indexer")
-    private val fetcher = context.actorFor("./fetcher")
+    private var indexer:Option[ActorRef] = None
+    private var fetcher:Option[ActorRef] = None
     
     override def preStart() = {
-      context.actorOf(Props[IndexerActor], "indexer")
-      context.actorOf(Props[URLFetcher], "fetcher")
+      indexer = Some(context.actorOf(Props[IndexerActor], "indexer"))
+      fetcher = Some(context.actorOf(Props[URLFetcher], "fetcher"))
     }
 
     override def postStop() = {
-      context.stop(indexer)
-      context.stop(fetcher)
+      context.stop(indexer.get)
+      context.stop(fetcher.get)
     }
 
     override def receive = {
         case request: SpiderRequest => request match {
             case Spider(url) =>
 //                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))              
-              sender ! SpiderActor.spider(indexer, fetcher, url)
+              sender ! SpiderActor.spider(indexer.get, fetcher.get, url)
         }
     }
 }

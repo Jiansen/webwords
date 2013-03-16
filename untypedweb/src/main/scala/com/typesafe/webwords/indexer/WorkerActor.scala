@@ -19,9 +19,9 @@ import scala.util.{Try, Success, Failure}
  */
 class WorkerActor(config: WebWordsConfig)
     extends WorkQueueWorkerActor(config.amqpURL) {
-    private val spider = context.actorFor("./spider")
-    private val cache = context.actorFor("./cache")
-
+    private var spider:Option[ActorRef] = None
+    private var cache:Option[ActorRef] = None
+    
     implicit val timeout = akka.util.Timeout(5 second)
     import scala.concurrent.ExecutionContext.Implicits.global
     override def handleRequest(request: WorkQueueRequest): Promise[WorkQueueReply] = {
@@ -34,20 +34,19 @@ class WorkerActor(config: WebWordsConfig)
                 // the wire cleanly, or configure AMQP differently, but requires
                 // some time to work out. Hotfixing with this.
                 val neverFailsFuture = promise[WorkQueueReply]
-                val futureIndex = spider ? Spider(new URL(url)) map {
+                val futureIndex = spider.get ? Spider(new URL(url)) map {
                     _ match { case Spidered(url, index) => index }
                 }
                 futureIndex flatMap { index =>
-                    cache ? CacheIndex(url, index) map { cacheAck =>
+                    cache.get ? CacheIndex(url, index) map { cacheAck =>
                         SpideredAndCached(url)
                     }
                 } onComplete {
                     case Success(reply: WorkQueueReply) =>
                         neverFailsFuture success reply
                     case Failure(e) =>
-                      //TODO:
-//                        EventHandler.info(this, "Exception spidering '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
-                        neverFailsFuture success SpideredAndCached(url)
+                      log.info("Exception spidering '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
+                      neverFailsFuture success SpideredAndCached(url)
                 }
                 neverFailsFuture
         }
@@ -55,17 +54,13 @@ class WorkerActor(config: WebWordsConfig)
 
     override def preStart = {
         super.preStart
-        context.actorOf(Props[SpiderActor], "spider")
-        context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache")
-        
-println("WorkerActor.scala")
+        spider = Some(context.actorOf(Props[SpiderActor], "spider"))
+        cache = Some(context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache"))
     }
 
     override def postStop = {
         super.postStop
-//        spider.stop
-//        cache.stop
-        context.stop(spider);
-        context.stop(cache)
+        context.stop(spider.get);
+        context.stop(cache.get)
     }
 }
