@@ -28,8 +28,8 @@ class ClientActor(config: WebWordsConfig) extends Actor {
     implicit val timeout = akka.util.Timeout(60 second)
     import ExecutionContext.Implicits.global
     
-    var client:ActorRef = context.actorFor("client")
-    var cache:ActorRef = context.actorFor("cache")
+    var client:Option[ActorRef] = None
+    var cache:Option[ActorRef] = None
         
     override def receive = {
         case incoming: ClientActorIncoming =>
@@ -39,41 +39,38 @@ class ClientActor(config: WebWordsConfig) extends Actor {
                     // we look in the cache, if that fails, ask spider to
                     // spider and then notify us, and then we look in the
                     // cache again.
-                    def getWithoutCache:GotIndex = {
+                  if (skipCache){
+                    sender ! getWithoutCache
+                  }else{
+                    sender ! getFromCacheOrElse(cache.get, url, cacheHit = true) { getWithoutCache }
+                  }
+                  
+                  def getWithoutCache:GotIndex = {
                       var gotIndex:GotIndex = GotIndex(url, index = None, cacheHit = false)
-                      client ? SpiderAndCache(url) onComplete {
+                      client.get ? SpiderAndCache(url) onComplete {
                         case Success(SpideredAndCached(returnedUrl)) =>
-//                          println("ClientActor: Spiderd URL recieved "+returnedUrl)
-                          getFromCacheOrElse(cache, url, cacheHit = false) { 
+                          println("ClientActor: Spiderd URL recieved "+returnedUrl)
+                          getFromCacheOrElse(cache.get, url, cacheHit = false) { 
                               GotIndex(url, index = None, cacheHit = false)
                           }
-                        case other => println("=== getWithoutCache: unexpected result "+other)
+                        case other => 
+                          println("=== getWithoutCache: unexpected result "+other)
                       }
                       gotIndex
-                    }
-
-                    val gotIndex:GotIndex = if (skipCache){
-//                      println("=== GetWithoutCache")
-                      getWithoutCache        
-                    }else{
-                      println("=== GetFromCacheOrElse")
-                      getFromCacheOrElse(cache, url, cacheHit = true) { getWithoutCache }                      
-                    }
-// println("=== reply to "+sender+" with "+gotIndex)
-                    sender ! gotIndex
+                  }
             }
     }
 
     override def preStart = {
 //      println("=== start:"+self)
-        client = context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)), "client")
-        cache= context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache")
+        client = Some(context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)), "client"))
+        cache= Some(context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache"))
     }
 
     override def postStop = {
 //      println("=== stop:"+self)
-        context.stop(client)
-        context.stop(cache)
+        context.stop(client.get)
+        context.stop(cache.get)
     }
     
     

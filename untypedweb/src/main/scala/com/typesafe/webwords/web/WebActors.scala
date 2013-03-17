@@ -226,7 +226,7 @@ class WordsActor(config: WebWordsConfig) extends Actor {
 
             futureGotIndex onComplete {
               case Success(GotIndex(url, indexOption, cacheHit)) =>
-                println("=== WebActor success? "+indexOption)
+                println("=== WebActor success? "+GotIndex(url, indexOption, cacheHit))
                 self ! Finish(get, url, indexOption, cacheHit, startTime)
               case Success(r) =>
                 println("=== WebActor FIX: unexpected reply "+r)

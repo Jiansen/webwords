@@ -47,14 +47,14 @@ println("WorkQueueWorkerActor: received is "+request)
           // in real life you would use a serialization framework (json, protobuf, ....), define command messages, etc...
           // check the Akka AMQP proxies project for examples
           val processor = new IProcessor {
-            def process(delivery: Delivery) = {
+            def process(delivery: Delivery) = {              
               val request = WorkQueueRequest.fromBinary.fromBinary(delivery.body)
               import scala.concurrent.ExecutionContext.Implicits.global
-println("=== request is " + request)                 
+// println("=== request is " + request)           
               val response = handleRequest(request)
               response.future map {
                 case r => 
-println("=== response is " + r)
+// println("=== response is " + r)
                   ProcessResult(Some(r.toBinary))
               }
             }
