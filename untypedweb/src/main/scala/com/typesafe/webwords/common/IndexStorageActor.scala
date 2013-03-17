@@ -116,11 +116,7 @@ class IndexStorageActor(mongoURI: Option[String])
             recreateCache()
         case m =>
           instance forward m
-            // send other messages to the pool
-//            _route.apply(m)
-          // TODO:
-          println("IndexStorageActor: fix me!"+m)
-          
+            // send other messages to the pool          
     }
 
     private[this] var connection: Option[MongoConnection] = None

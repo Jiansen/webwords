@@ -8,6 +8,7 @@ import akka.dispatch._
 import akka.pattern.ask
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util._
 
 sealed trait ClientActorIncoming
 case class GetIndex(url: String, skipCache: Boolean) extends ClientActorIncoming
@@ -38,7 +39,7 @@ println("receiving message: "+GetIndex(url, skipCache))
                     // we look in the cache, if that fails, ask spider to
                     // spider and then notify us, and then we look in the
                     // cache again.
-                    def getWithoutCache = {
+                    def getWithoutCache:Future[GotIndex] = {
                         getFromWorker(client, url) flatMap { _ =>
                             getFromCacheOrElse(cache, url, cacheHit = false) {
                               Future(GotIndex(url, index = None, cacheHit = false))
@@ -46,13 +47,19 @@ println("receiving message: "+GetIndex(url, skipCache))
                         }
                     }
 
-                    val futureGotIndex = if (skipCache)
+                    val futureGotIndex:Future[GotIndex] = if (skipCache)
                         getWithoutCache
                     else
                         getFromCacheOrElse(cache, url, cacheHit = true) { getWithoutCache }
 
 //                    self.channel.replyWith(futureGotIndex)
-                    sender ! futureGotIndex
+                    futureGotIndex onComplete{
+                      case Success(gotIndex) =>
+println("=== reply to "+sender+" with "+gotIndex)                        
+                        sender ! gotIndex
+                      case Failure(_) =>
+                        println("Client Actor:  Fix me ")
+                    }
             }
     }
 

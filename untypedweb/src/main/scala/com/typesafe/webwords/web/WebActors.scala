@@ -222,14 +222,16 @@ class WordsActor(config: WebWordsConfig) extends Actor {
         if (url.isDefined) {
             val startTime = System.currentTimeMillis
             implicit val timeout = akka.util.Timeout(60 second)
-            val futureGotIndex = (client.get ? GetIndex(url.get.toExternalForm, skipCache)).mapTo[GotIndex]
+            val futureGotIndex = (client.get ? GetIndex(url.get.toExternalForm, skipCache))
 
             futureGotIndex onComplete {
               case Success(GotIndex(url, indexOption, cacheHit)) =>
-                println("success? "+indexOption)
+                println("=== WebActor success? "+indexOption)
                 self ! Finish(get, url, indexOption, cacheHit, startTime)
+              case Success(r) =>
+                println("=== WebActor FIX: unexpected reply "+r)
               case Failure(e) =>
-                println("failed: "+e)
+                println("=== WebActor failed: "+e)
                 self ! Finish(get, url.get.toExternalForm, index = None, cacheHit = false, startTime = startTime)
             }
             /*

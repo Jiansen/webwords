@@ -25,21 +25,19 @@ case class IndexedHtml(index: Index) extends IndexerReply
  * algorithmic code in Scala, in a functional style, including use of
  * parallel collections.
  */
-class IndexerActor
-    extends Actor {  // TODO
+class IndexerActor extends Actor {  // TODO
 //    with CPUBoundActorPool {
 
     // actorOf[Worker] doesn't work on nested classes
-//    override def instance = actorOf(new Worker)
+//  override def instance = context.actorOf(Props[Worker])
 
 //    override def receive = _route
   override def receive = {
     case m => 
-      // TODO: fix me
-      println("fix IndexerActor: "+m)
+      context.actorOf(Props(new Worker)) forward m
   }
   
-    private class Worker extends Actor {
+  private class Worker extends Actor {
         import IndexerActor._
 
         private def links(doc: Document) = {
@@ -88,7 +86,7 @@ class IndexerActor
                     sender ! IndexedHtml(index)
             }
         }
-    }
+  }
 }
 
 object IndexerActor {

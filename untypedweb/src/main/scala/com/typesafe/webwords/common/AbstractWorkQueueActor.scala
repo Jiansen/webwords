@@ -131,7 +131,7 @@ abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
 //        connectionActor = Some(AMQP.newConnection(params.copy(connectionCallback = Some(self))))
 //        createRpc(connectionActor.get)
         val conn = new RabbitMQConnection(host ="localhost", name = rpcExchangeName)(context.system)
-
+// println("=== created connection "+conn)
         // create RPC server and client
         createRpc(conn)
     }

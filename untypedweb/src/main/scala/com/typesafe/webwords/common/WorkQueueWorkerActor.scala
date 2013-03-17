@@ -25,8 +25,8 @@ abstract class WorkQueueWorkerActor(url: Option[String] = None)
 //    private[this] var rpcServer: Option[RPC.RpcServerHandle] = None
     private[this] var rpcServer: Option[RpcServer] = None
     
-    protected def handleRequest(request: WorkQueueRequest): Promise[WorkQueueReply]
-
+    protected def handleRequest(request: WorkQueueRequest): WorkQueueReply
+/*
     override def receive = {
         case request: WorkQueueRequest =>
             //self.channel.replyWith(handleRequest(request))
@@ -36,7 +36,7 @@ println("WorkQueueWorkerActor: received is "+request)
         case m =>
             super.receive.apply(m)
     }
-    
+  */  
     override def createRpc(connection:RabbitMQConnection) = {
        val queueParams = QueueParameters("webwords_rpc.request.in", passive = false, durable = false, exclusive = false, autodelete = true)
 
@@ -48,13 +48,17 @@ println("WorkQueueWorkerActor: received is "+request)
           // check the Akka AMQP proxies project for examples
           val processor = new IProcessor {
             def process(delivery: Delivery) = {
-              // assume that the message body is a string 
-println("RPCServer receive "+delivery.body)              
+              val request = WorkQueueRequest.fromBinary.fromBinary(delivery.body)
+// println("RPCServer receive "+request)           
               import scala.concurrent.ExecutionContext.Implicits.global
-              val response = "response to " + new String(delivery.body)
-              Future(ProcessResult(Some(response.getBytes)))
+              val response = handleRequest(request)
+println("=== response is " + response)              
+              Future(ProcessResult(Some(response.toBinary)))
             }
-            def onFailure(delivery: Delivery, e: Throwable) = ProcessResult(None) // we don't return anything
+            def onFailure(delivery: Delivery, e: Throwable) = {
+println("=== Failed Delivery "+delivery)
+              ProcessResult(None) // we don't return anything 
+            }
           }
           // TODO: my_key?
           connection.createRpcServer(StandardExchanges.amqDirect, queueParams, "my_key", processor, Some(ChannelParameters(qos = 1)))

@@ -16,7 +16,8 @@ class WorkQueueSpec extends FlatSpec with ShouldMatchers {
         override def handleRequest(request: WorkQueueRequest) = {
             request match {
                 case SpiderAndCache(url) =>
-                  promise() success SpideredAndCached(url)
+                  SpideredAndCached(url)
+//                  promise() success SpideredAndCached(url)
 //                    new AlreadyCompletedFuture[WorkQueueReply](Right(SpideredAndCached(url)))
             }
         }

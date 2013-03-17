@@ -13,6 +13,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.{Future, promise, future}
 import akka.pattern.ask
+import scala.util._
 
 sealed trait SpiderRequest
 case class Spider(url: URL) extends SpiderRequest
@@ -48,8 +49,9 @@ class SpiderActor
     override def receive = {
         case request: SpiderRequest => request match {
             case Spider(url) =>
-//                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))              
+//                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))            
               sender ! SpiderActor.spider(indexer.get, fetcher.get, url)
+              println("=== SpiderActor: replyed")
         }
     }
 }
@@ -71,15 +73,9 @@ object SpiderActor {
                 throw new Exception("Failed to fetch, status: " + status)
             case whatever =>
                 throw new IllegalStateException("Unexpected reply to url fetch: " + whatever)
-        }
-        maybeFailedFetch onSuccess { case x => bodyFuture success x }
-        maybeFailedFetch onFailure {
-            case e =>
-              // TODO:
-                 // info(this, "Exception fetching '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
-              println("SpiderActor TO FIX")
-                // and just pretend we got an empty document.
-              bodyFuture success ""
+        } onComplete{
+          case Success(x) => bodyFuture success x
+          case Failure(e) => bodyFuture success ""
         }
         bodyFuture.future
     }
@@ -90,7 +86,6 @@ object SpiderActor {
             indexed map {
                 case IndexedHtml(index) =>
                     index
-
             }
         }
     }
@@ -180,7 +175,7 @@ object SpiderActor {
                 combineIndexes(indexes)
             }
             val spidered = combinedIndex map { index =>
-                Spidered(url, index)
+              Spidered(url, index)
             }
 
             spidered
