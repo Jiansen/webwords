@@ -38,6 +38,7 @@ class ClientActor(config: WebWordsConfig) extends Actor {
     
     override def receive = {
         case GetIndex(url, skipCache) =>
+          val replyto = sender
           // we look in the cache, if that fails, ask spider to
           // spider and then notify us, and then we look in the
           // cache again.
@@ -54,7 +55,14 @@ class ClientActor(config: WebWordsConfig) extends Actor {
           else
             getFromCacheOrElse(cache.get, url, cacheHit = true) { getWithoutCache }
 
-          sender ! futureGotIndex
+          futureGotIndex onComplete{
+            case Success(gotIndex) =>
+              println("=== Client Actor send "+replyto+" with "+gotIndex)
+              
+              replyto ! gotIndex
+            case Failure(e) =>
+              println("=== Client Actor failed with "+e)              
+          }
         case m => 
           println("=== Client Actor received "+m)
     }
