@@ -10,29 +10,31 @@ import akka.dispatch._
 // import akka.event.EventHandler
 import akka.event.Logging
 import scala.concurrent.{Future, Promise, promise, future}
+import scala.util._
 
 sealed trait URLFetcherIncoming
-case class FetchURL(u: URL) extends URLFetcherIncoming
+case class FetchURL(u: URL, replyTo:ActorRef) extends URLFetcherIncoming
 
 sealed trait URLFetcherOutgoing
-case class URLFetched(status: Int, headers: Map[String, String], body: String) extends URLFetcherOutgoing
+case class URLFetched(url:URL, status: Int, headers: Map[String, String], body: String) extends URLFetcherOutgoing
 
 /**
  * This is an actor which encapsulates the AsyncHttpClient library.
  */
 class URLFetcher extends Actor {
-
+    import scala.concurrent.ExecutionContext.Implicits.global
     private val asyncHttpClient = URLFetcher.makeClient(context.dispatcher)
 
     override def receive = {
-        case incoming: URLFetcherIncoming => {
-            val f = incoming match {
-                case FetchURL(u) =>
-                    URLFetcher.fetchURL(asyncHttpClient, u)
-            }
-
-//            self.channel.replyWith(f)
-            sender ! f
+        case incoming: URLFetcherIncoming => incoming match {
+          case FetchURL(u, replyTo) =>
+               URLFetcher.fetchURL(asyncHttpClient, u) onComplete{
+                 case Success(fetched) => 
+//                   println("=== URLFetcher.scala: reply success to "+replyTo)
+                   replyTo ! fetched
+                 case Failure(e) => 
+                   println("URLFetcher.scala: FIX ME: URL fetch failed "+e)
+               }
         }
     }
 
@@ -137,10 +139,8 @@ object URLFetcher {
                     }
 
                     val body = response.getResponseBody()
-
 //                    f.completeWithResult(URLFetched(response.getStatusCode(), headers, body))
-                    f success URLFetched(response.getStatusCode(), headers, body)
-                    
+                    f success URLFetched(u, response.getStatusCode(), headers, body)                    
                 }
             }
         }

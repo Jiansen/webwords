@@ -9,11 +9,12 @@ import com.typesafe.webwords.common._
 import akka.actor._
 import akka.dispatch._
 import akka.actor.ActorLogging
-import scala.concurrent.Await
+import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration._
 import scala.concurrent.{Future, promise, future}
 import akka.pattern.ask
 import scala.util._
+import scala.collection.mutable.HashMap
 
 sealed trait SpiderRequest
 case class Spider(url: URL) extends SpiderRequest
@@ -36,6 +37,9 @@ class SpiderActor
     private var indexer:Option[ActorRef] = None
     private var fetcher:Option[ActorRef] = None
     
+    import scala.concurrent.ExecutionContext.Implicits.global
+    implicit val timeout = akka.util.Timeout(60 second)
+    
     override def preStart() = {
       indexer = Some(context.actorOf(Props[IndexerActor], "indexer"))
       fetcher = Some(context.actorOf(Props[URLFetcher], "fetcher"))
@@ -46,50 +50,69 @@ class SpiderActor
       context.stop(fetcher.get)
     }
 
+//    val bodyFuture = promise[String]
+    val bodyPromises = new HashMap[URL, Promise[String]]
+    
     override def receive = {
         case request: SpiderRequest => request match {
             case Spider(url) =>
 //                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))            
-              sender ! SpiderActor.spider(indexer.get, fetcher.get, url)
+              sender ! spider(indexer.get, fetcher.get, url, self)
               println("=== SpiderActor: replyed")
+        }
+        
+        case URLFetched(url, status, headers, body) if status == 200 =>
+//              println("=== fetchBody: fetched "+body)
+          bodyPromises(url).success(body)
+        case URLFetched(url, status, headers, body) =>
+              throw new Exception("Failed to fetch, status: " + status)
+        case whatever =>
+              throw new IllegalStateException("Unexpected reply to url fetch: " + whatever)        
+    }
+    
+    
+    /*
+     * This is a relatively complex example of using Akka's Future class.
+     * Note that this code never blocks (no future.await()
+     * or future.get()), instead it uses map, flatMap, and friends
+     * on the futures to chain them together. It then ultimately
+     * returns a future that will be completed when all the dependent
+     * futures are also completed.
+     */
+    private[indexer] def spider(indexer: ActorRef, fetcher: ActorRef, url: URL, spider:ActorRef): Future[Spidered] = {
+//        implicit val dispatcher = indexer.dispatcher
+        fetchIndex(indexer, fetcher, url) flatMap { rootIndex =>
+            val childIndexes:Seq[Future[Index]] = SpiderActor.childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, fetcher, _) }
+            val rootIndexFuture = (promise[Index] success rootIndex).future// some 1.2 bug: AlreadyCompletedFuture breaks
+
+            val allIndexFutures:Seq[Future[Index]] = childIndexes ++ Iterator(rootIndexFuture)
+            val allIndexes = Future.sequence(allIndexFutures)
+            val combinedIndex = allIndexes map { indexes =>
+                SpiderActor.combineIndexes(indexes)
+            }
+            val spidered = combinedIndex map { index =>
+              Spidered(url, index)
+            }
+
+            spidered
+        }
+    }
+    
+    private def fetchIndex(indexer: ActorRef, fetcher: ActorRef, url: URL): Future[Index] = {
+      bodyPromises += ((url, promise()))
+      fetcher ! FetchURL(url, self)
+      bodyPromises(url).future flatMap { body =>
+// println("=== SpiderActor: fetched body "+body)          
+          val indexed = indexer ? IndexHtml(url, body)
+          indexed map {
+            case IndexedHtml(index) =>
+                index
+          }
         }
     }
 }
 
-object SpiderActor {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    implicit val timeout = akka.util.Timeout(5 second)
-        
-    private def fetchBody(fetcher: ActorRef, url: URL): Future[String] = {
-        val fetched = fetcher ? FetchURL(url)
-        // there may be a cleaner solution here than returning an empty
-        // document on failure, but let's go with this for now
-        val bodyFuture = promise[String]
-        val maybeFailedFetch = fetched map {
-            case URLFetched(status, headers, body) if status == 200 =>
-                // FIXME should probably filter out non-HTML content types
-                body
-            case URLFetched(status, headers, body) =>
-                throw new Exception("Failed to fetch, status: " + status)
-            case whatever =>
-                throw new IllegalStateException("Unexpected reply to url fetch: " + whatever)
-        } onComplete{
-          case Success(x) => bodyFuture success x
-          case Failure(e) => bodyFuture success ""
-        }
-        bodyFuture.future
-    }
-
-    private def fetchIndex(indexer: ActorRef, fetcher: ActorRef, url: URL): Future[Index] = {
-        fetchBody(fetcher, url) flatMap { body =>
-            val indexed = indexer ? IndexHtml(url, body)
-            indexed map {
-                case IndexedHtml(index) =>
-                    index
-            }
-        }
-    }
-
+object SpiderActor {    
     // pick a few links on the page to follow, preferring to "descend"
     private def childLinksToFollow(url: URL, index: Index): Seq[URL] = {
         val uri = removeFragment((url.toURI))
@@ -155,32 +178,7 @@ object SpiderActor {
         indexes.reduce(mergeIndexes(_, _))
     }
 
-    /*
-     * This is a relatively complex example of using Akka's Future class.
-     * Note that this code never blocks (no future.await()
-     * or future.get()), instead it uses map, flatMap, and friends
-     * on the futures to chain them together. It then ultimately
-     * returns a future that will be completed when all the dependent
-     * futures are also completed.
-     */
-    private[indexer] def spider(indexer: ActorRef, fetcher: ActorRef, url: URL): Future[Spidered] = {
-//        implicit val dispatcher = indexer.dispatcher
-        fetchIndex(indexer, fetcher, url) flatMap { rootIndex =>
-            val childIndexes:Seq[Future[Index]] = childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, fetcher, _) }
-            val rootIndexFuture = (promise[Index] success rootIndex).future// some 1.2 bug: AlreadyCompletedFuture breaks
 
-            val allIndexFutures:Seq[Future[Index]] = childIndexes ++ Iterator(rootIndexFuture)
-            val allIndexes = Future.sequence(allIndexFutures)
-            val combinedIndex = allIndexes map { indexes =>
-                combineIndexes(indexes)
-            }
-            val spidered = combinedIndex map { index =>
-              Spidered(url, index)
-            }
-
-            spidered
-        }
-    }
 
     // this lets us copy URIs changing one part of the URI via keyword.
     private def copyURI(uri: URI, scheme: Option[String] = None, userInfo: Option[String] = None,

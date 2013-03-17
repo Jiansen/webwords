@@ -28,7 +28,7 @@ class SpiderActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
     }
 
     behavior of "local http server used to test spider"
-
+/*
     it should "fetch our test resource" in {
         val fetcher = system.actorOf(Props[URLFetcher])
         val f = fetcher ? FetchURL(httpServer.resolve("/resource/Functional_programming.html"))
@@ -42,7 +42,7 @@ class SpiderActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
         }
         system.stop(fetcher)
     }
-
+*/
     behavior of "utility functions"
 
     it should "remove a uri fragment" in {

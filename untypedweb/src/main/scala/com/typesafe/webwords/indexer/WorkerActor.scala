@@ -22,7 +22,7 @@ class WorkerActor(config: WebWordsConfig)
     private var spider:Option[ActorRef] = None
     private var cache:Option[ActorRef] = None
     
-    implicit val timeout = akka.util.Timeout(5 second)
+    implicit val timeout = akka.util.Timeout(60 second)
     import scala.concurrent.ExecutionContext.Implicits.global
     override def handleRequest(request: WorkQueueRequest): WorkQueueReply = {
         request match {
@@ -42,8 +42,11 @@ class WorkerActor(config: WebWordsConfig)
                             case m =>
                               println("=== WorkerActor what is m: "+m)
                           }
+                        case Failure(e) => 
+                          println("=== WorkerActor exception is" +e)
                       }
-
+                    case Success(whatever) =>
+                      println("=== WorkerActor whatever is: "+whatever)
                     case Failure(e) => 
                         log.info("Exception spidering '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
                 }
