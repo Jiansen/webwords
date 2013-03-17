@@ -12,15 +12,16 @@ import akka.event.Logging
 import scala.concurrent.{Future, Promise, promise, future}
 import scala.util._
 
-sealed trait URLFetcherIncoming
-case class FetchURL(u: URL, replyTo:ActorRef) extends URLFetcherIncoming
+//sealed trait URLFetcherIncoming
+//case class FetchURL(u: URL, replyTo:ActorRef) extends URLFetcherIncoming
 
-sealed trait URLFetcherOutgoing
-case class URLFetched(url:URL, status: Int, headers: Map[String, String], body: String) extends URLFetcherOutgoing
+// sealed trait URLFetcherOutgoing
+case class URLFetched(url:URL, status: Int, headers: Map[String, String], body: String)// extends URLFetcherOutgoing
 
 /**
  * This is an actor which encapsulates the AsyncHttpClient library.
  */
+/*
 class URLFetcher extends Actor {
     import scala.concurrent.ExecutionContext.Implicits.global
     private val asyncHttpClient = URLFetcher.makeClient(context.dispatcher)
@@ -30,7 +31,7 @@ class URLFetcher extends Actor {
           case FetchURL(u, replyTo) =>
                URLFetcher.fetchURL(asyncHttpClient, u) onComplete{
                  case Success(fetched) => 
-//                   println("=== URLFetcher.scala: reply success to "+replyTo)
+                   println("=== URLFetcher.scala: reply success to "+replyTo)
                    replyTo ! fetched
                  case Failure(e) => 
                    println("URLFetcher.scala: FIX ME: URL fetch failed "+e)
@@ -42,7 +43,7 @@ class URLFetcher extends Actor {
         asyncHttpClient.close()
     }
 }
-
+*/
 object URLFetcher {
     // This field is just used for debug/logging/testing
     val httpInFlight = new AtomicInteger(0)
@@ -62,6 +63,10 @@ object URLFetcher {
         new AsyncHttpClient(config)
     }
 
+    def fetchURL(u:URL)(implicit dispatcher: MessageDispatcher):Future[URLFetched] = {
+      val asyncHttpClient = URLFetcher.makeClient(dispatcher)
+      URLFetcher.fetchURL(asyncHttpClient, u)
+    }
     private def fetchURL(asyncHttpClient: AsyncHttpClient, u: URL): Future[URLFetched] = {
         // timeout the Akka future 50ms after we'd have timed out the request anyhow,
         // gives us 50ms to parse the response

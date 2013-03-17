@@ -60,6 +60,7 @@ class IndexStorageActor(mongoURI: Option[String])
             case FetchCachedIndex(url) =>
                 // "$natural" -> -1 means reverse insertion order
                 // i.e. most recent
+// println("FetchCachedIndex "+url)              
                 val cursor =
                     cache.find(MongoDBObject("url" -> url))
                         .sort(MongoDBObject("$natural" -> -1))
@@ -89,11 +90,13 @@ class IndexStorageActor(mongoURI: Option[String])
                         }
                     }
                 }
-
+// println("=== IndexStorageActor: indexes is "+indexes)
                 if (indexes.hasNext) {
 //                    self reply CachedIndexFetched(Some(indexes.next()))
+// println("=== IndexStorageActor: has next indexes")                  
                   sender ! CachedIndexFetched(Some(indexes.next()))
                 } else {
+// println("=== IndexStorageActor: no next indexes")
 //                    self reply CachedIndexFetched(None)
                   sender ! CachedIndexFetched(None)
                 }

@@ -35,79 +35,58 @@ case class Spidered(url: URL, index: Index)
 class SpiderActor
     extends Actor {
     private var indexer:Option[ActorRef] = None
-    private var fetcher:Option[ActorRef] = None
+//    private var fetcher:Option[ActorRef] = None
     
     import scala.concurrent.ExecutionContext.Implicits.global
     implicit val timeout = akka.util.Timeout(60 second)
     
     override def preStart() = {
       indexer = Some(context.actorOf(Props[IndexerActor], "indexer"))
-      fetcher = Some(context.actorOf(Props[URLFetcher], "fetcher"))
+//      fetcher = Some(context.actorOf(Props[URLFetcher], "fetcher"))
     }
 
     override def postStop() = {
       context.stop(indexer.get)
-      context.stop(fetcher.get)
+//      context.stop(fetcher.get)
     }
 
 //    val bodyFuture = promise[String]
     val bodyPromises = new HashMap[URL, Promise[String]]
     
     override def receive = {
-        case request: SpiderRequest => request match {
-            case Spider(url) =>
+      case Spider(url) =>
 //                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))            
-              sender ! spider(indexer.get, fetcher.get, url, self)
-              println("=== SpiderActor: replyed")
+        sender ! spider(indexer.get, url, self)
+println("=== SpiderActor: replyed to " +sender)
+        
+        
+
+        def spider(indexer: ActorRef, url: URL, spider:ActorRef):Spidered = {
+println("=== spidering")      
+          val rootIndex = fetchIndex(indexer, url) 
+          val childIndexes:Seq[Index] = SpiderActor.childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, _) }
+          val allIndexes:Seq[Index] = childIndexes ++ Iterator(rootIndex)
+          val combinedIndex = SpiderActor.combineIndexes(allIndexes)
+println("=== get spidered: "+Spidered(url, combinedIndex))
+          Spidered(url, combinedIndex)
         }
         
-        case URLFetched(url, status, headers, body) if status == 200 =>
-//              println("=== fetchBody: fetched "+body)
-          bodyPromises(url).success(body)
-        case URLFetched(url, status, headers, body) =>
-              throw new Exception("Failed to fetch, status: " + status)
-        case whatever =>
-              throw new IllegalStateException("Unexpected reply to url fetch: " + whatever)        
-    }
-    
-    
-    /*
-     * This is a relatively complex example of using Akka's Future class.
-     * Note that this code never blocks (no future.await()
-     * or future.get()), instead it uses map, flatMap, and friends
-     * on the futures to chain them together. It then ultimately
-     * returns a future that will be completed when all the dependent
-     * futures are also completed.
-     */
-    private[indexer] def spider(indexer: ActorRef, fetcher: ActorRef, url: URL, spider:ActorRef): Future[Spidered] = {
-//        implicit val dispatcher = indexer.dispatcher
-        fetchIndex(indexer, fetcher, url) flatMap { rootIndex =>
-            val childIndexes:Seq[Future[Index]] = SpiderActor.childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, fetcher, _) }
-            val rootIndexFuture = (promise[Index] success rootIndex).future// some 1.2 bug: AlreadyCompletedFuture breaks
-
-            val allIndexFutures:Seq[Future[Index]] = childIndexes ++ Iterator(rootIndexFuture)
-            val allIndexes = Future.sequence(allIndexFutures)
-            val combinedIndex = allIndexes map { indexes =>
-                SpiderActor.combineIndexes(indexes)
-            }
-            val spidered = combinedIndex map { index =>
-              Spidered(url, index)
-            }
-
-            spidered
-        }
-    }
-    
-    private def fetchIndex(indexer: ActorRef, fetcher: ActorRef, url: URL): Future[Index] = {
-      bodyPromises += ((url, promise()))
-      fetcher ! FetchURL(url, self)
-      bodyPromises(url).future flatMap { body =>
-// println("=== SpiderActor: fetched body "+body)          
-          val indexed = indexer ? IndexHtml(url, body)
-          indexed map {
-            case IndexedHtml(index) =>
-                index
+        def fetchIndex(indexer: ActorRef, url: URL): Index = {
+          implicit val timeout = akka.util.Timeout(60 seconds)
+          val result:Promise[Index] = promise()
+          
+          URLFetcher.fetchURL(url)(context.dispatcher) map {
+              case URLFetched(url, status, headers, body) if status == 200 =>
+                Await.result(indexer ? IndexHtml(url, body), timeout.duration) match {
+                  case IndexedHtml(index) =>                    
+                    result success index
+                }
+              case URLFetched(url, status, headers, body) =>
+                throw new Exception("Failed to fetch, status: " + status)
+              case whatever =>
+                throw new IllegalStateException("Unexpected reply to url fetch: " + whatever)
           }
+          Await.result(result.future, 60 second)
         }
     }
 }

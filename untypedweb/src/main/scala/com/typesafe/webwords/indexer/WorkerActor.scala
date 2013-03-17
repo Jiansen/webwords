@@ -24,7 +24,7 @@ class WorkerActor(config: WebWordsConfig)
     
     implicit val timeout = akka.util.Timeout(60 second)
     import scala.concurrent.ExecutionContext.Implicits.global
-    override def handleRequest(request: WorkQueueRequest): WorkQueueReply = {
+    override def handleRequest(request: WorkQueueRequest): Promise[WorkQueueReply] = {
         request match {
             case SpiderAndCache(url) =>
                 // This "neverFailsFuture" is sort of a hacky hotfix; AMQP setup
@@ -33,25 +33,22 @@ class WorkerActor(config: WebWordsConfig)
                 // We could do various nicer things like send the exception over
                 // the wire cleanly, or configure AMQP differently, but requires
                 // some time to work out. Hotfixing with this.
-//                val neverFailsFuture = promise[WorkQueueReply]
-                val futureIndex = spider.get ? Spider(new URL(url)) onComplete {
-                    case Success(f:Future[Spidered]) =>
-                      f onComplete{
-                        case Success(Spidered(_, index)) => 
-                          cache.get ? CacheIndex(url, index) onComplete{
-                            case m =>
-                              println("=== WorkerActor what is m: "+m)
-                          }
-                        case Failure(e) => 
-                          println("=== WorkerActor exception is" +e)
-                      }
-                    case Success(whatever) =>
-                      println("=== WorkerActor whatever is: "+whatever)
-                    case Failure(e) => 
-                        log.info("Exception spidering '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
+                val neverFailsFuture:Promise[WorkQueueReply] = promise() 
+                val futureIndex = spider.get ? Spider(new URL(url)) map {
+                    _ match { case Spidered(url, index) => index }
                 }
-                SpideredAndCached(url)
-//                neverFailsFuture
+                futureIndex flatMap { index =>
+                    cache.get ? CacheIndex(url, index) map { cacheAck =>
+                        SpideredAndCached(url)
+                    }
+                } onComplete {
+                    case Success(reply: WorkQueueReply) =>
+                        neverFailsFuture success reply
+                    case Failure(e) =>
+                        log.info("Exception spidering '" + url + "': " + e.getClass.getSimpleName + ": " + e.getMessage)
+                        neverFailsFuture success SpideredAndCached(url)
+                }
+                neverFailsFuture
         }
     }
 

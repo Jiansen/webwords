@@ -25,7 +25,7 @@ abstract class WorkQueueWorkerActor(url: Option[String] = None)
 //    private[this] var rpcServer: Option[RPC.RpcServerHandle] = None
     private[this] var rpcServer: Option[RpcServer] = None
     
-    protected def handleRequest(request: WorkQueueRequest): WorkQueueReply
+    protected def handleRequest(request: WorkQueueRequest): Promise[WorkQueueReply]
 /*
     override def receive = {
         case request: WorkQueueRequest =>
@@ -41,7 +41,7 @@ println("WorkQueueWorkerActor: received is "+request)
        val queueParams = QueueParameters("webwords_rpc.request.in", passive = false, durable = false, exclusive = false, autodelete = true)
 
        //TODO: more server?
-       // create 2 equivalent servers  
+       // create n equivalent servers  
        val rpcServers = for (i <- 1 to 1) yield {
           // create a "processor"
           // in real life you would use a serialization framework (json, protobuf, ....), define command messages, etc...
@@ -49,11 +49,14 @@ println("WorkQueueWorkerActor: received is "+request)
           val processor = new IProcessor {
             def process(delivery: Delivery) = {
               val request = WorkQueueRequest.fromBinary.fromBinary(delivery.body)
-// println("RPCServer receive "+request)           
               import scala.concurrent.ExecutionContext.Implicits.global
+println("=== request is " + request)                 
               val response = handleRequest(request)
-println("=== response is " + response)              
-              Future(ProcessResult(Some(response.toBinary)))
+              response.future map {
+                case r => 
+println("=== response is " + r)
+                  ProcessResult(Some(r.toBinary))
+              }
             }
             def onFailure(delivery: Delivery, e: Throwable) = {
 println("=== Failed Delivery "+delivery)

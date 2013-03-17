@@ -7,7 +7,7 @@ import akka.actor._
 import akka.dispatch._
 import akka.pattern.ask
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise, promise}
 import scala.util._
 
 sealed trait ClientActorIncoming
@@ -25,7 +25,7 @@ case class GotIndex(url: String, index: Option[Index], cacheHit: Boolean) extend
  * this.
  */
 class ClientActor(config: WebWordsConfig) extends Actor {
-    import ClientActor._
+    implicit val timeout = akka.util.Timeout(60 second)
     import ExecutionContext.Implicits.global
     
     var client:ActorRef = context.actorFor("client")
@@ -35,63 +35,72 @@ class ClientActor(config: WebWordsConfig) extends Actor {
         case incoming: ClientActorIncoming =>
             incoming match {
                 case GetIndex(url, skipCache) =>
-println("receiving message: "+GetIndex(url, skipCache))
+// println("ClientActor receiving message: "+GetIndex(url, skipCache))
                     // we look in the cache, if that fails, ask spider to
                     // spider and then notify us, and then we look in the
                     // cache again.
-                    def getWithoutCache:Future[GotIndex] = {
-                        getFromWorker(client, url) flatMap { _ =>
-                            getFromCacheOrElse(cache, url, cacheHit = false) {
-                              Future(GotIndex(url, index = None, cacheHit = false))
-                            }
-                        }
+                    def getWithoutCache:GotIndex = {
+                      var gotIndex:GotIndex = GotIndex(url, index = None, cacheHit = false)
+                      client ? SpiderAndCache(url) onComplete {
+                        case Success(SpideredAndCached(returnedUrl)) =>
+//                          println("ClientActor: Spiderd URL recieved "+returnedUrl)
+                          getFromCacheOrElse(cache, url, cacheHit = false) { 
+                              GotIndex(url, index = None, cacheHit = false)
+                          }
+                        case other => println("=== getWithoutCache: unexpected result "+other)
+                      }
+                      gotIndex
                     }
 
-                    val futureGotIndex:Future[GotIndex] = if (skipCache)
-                        getWithoutCache
-                    else
-                        getFromCacheOrElse(cache, url, cacheHit = true) { getWithoutCache }
-
-//                    self.channel.replyWith(futureGotIndex)
-                    futureGotIndex onComplete{
-                      case Success(gotIndex) =>
-println("=== reply to "+sender+" with "+gotIndex)                        
-                        sender ! gotIndex
-                      case Failure(_) =>
-                        println("Client Actor:  Fix me ")
+                    val gotIndex:GotIndex = if (skipCache){
+//                      println("=== GetWithoutCache")
+                      getWithoutCache        
+                    }else{
+                      println("=== GetFromCacheOrElse")
+                      getFromCacheOrElse(cache, url, cacheHit = true) { getWithoutCache }                      
                     }
+// println("=== reply to "+sender+" with "+gotIndex)
+                    sender ! gotIndex
             }
     }
 
     override def preStart = {
-      println("=== start:"+self)
+//      println("=== start:"+self)
         client = context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)), "client")
         cache= context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache")
     }
 
     override def postStop = {
-      println("=== stop:"+self)
+//      println("=== stop:"+self)
         context.stop(client)
         context.stop(cache)
     }
-}
+    
+    
 
-object ClientActor {
-    implicit val timeout = akka.util.Timeout(60 second)
-    import ExecutionContext.Implicits.global
-    private def getFromCacheOrElse(cache: ActorRef, url: String, cacheHit: Boolean)(fallback: => Future[GotIndex]): Future[GotIndex] = {
-        cache ? FetchCachedIndex(url) flatMap {
-            case CachedIndexFetched(Some(index)) =>
-              Future(GotIndex(url, Some(index), cacheHit))
-            case CachedIndexFetched(None) =>
-                fallback
+    private def getFromCacheOrElse(cache: ActorRef, url: String, cacheHit: Boolean)(fallback: => GotIndex): GotIndex = {
+      println("=== ClientActor: cache is "+cache)
+      var gotIndex:GotIndex = fallback
+        cache ? FetchCachedIndex(url) onComplete {
+            case Success(CachedIndexFetched(Some(index))) =>
+println("=== Client Actor receive "+index)              
+              gotIndex =  GotIndex(url, Some(index), cacheHit)
+            case Success(CachedIndexFetched(None)) =>
+println("=== Client Actor receive None")              
+              gotIndex = fallback
+            case other =>
+println("=== Client Actor getFromCacheOrElse: fix me: should not receive "+other)
+              gotIndex = fallback
         }
+      gotIndex
     }
-
+/*
     private def getFromWorker(client: ActorRef, url: String): Future[Unit] = {
-        client ? SpiderAndCache(url) map {
-            case SpideredAndCached(returnedUrl) =>
-                Unit
+        client ? SpiderAndCache(url) onComplete {
+            case Success(SpideredAndCached(returnedUrl)) =>
+              println("ClientActor: Spiderd recieved")
+              Future(Unit)
         }
     }
+    */
 }

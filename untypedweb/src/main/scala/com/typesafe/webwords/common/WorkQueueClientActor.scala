@@ -23,17 +23,20 @@ class WorkQueueClientActor(url: Option[String] = None)
     private[this] var rpcClient: Option[ActorRef] = None
     override def receive = {
         case request: WorkQueueRequest =>
-          println("WorkQueueClient: receive "+request)
+          println("=== WorkQueueClient: receive request "+request)
           rpcClient.get ? Publish("amq.direct", "my_key", request.toBinary) onComplete {
-            case Success(Ok(_, reply)) => reply match {
+            /*
+            case Success(Ok(request, reply)) => reply match {
               case Some(r:WorkQueueReply) =>
-                println("WorkQueueClient: reply "+reply )
+                println("=== WorkQueueClientActor: reply "+reply )
                 sender ! reply
               case Some(r) =>
-                println("FIX ME: WorkQueueClientActor.scala receive success Ok reply "+r)
+                println("FIX ME: WorkQueueClientActor.scala receive success Ok reply "+r + "for requtest "+ request)
               case None =>
-                println("FIX ME: WorkQueueClientActor.scala receive success None reply ")
+                println("FIX ME: WorkQueueClientActor.scala receive success None reply for requtest "+ request)
             }
+            * 
+            */
             case Success(m) =>
               println("FIX ME: WorkQueueClientActor.scala receive success message "+m)
             case Failure(_) =>

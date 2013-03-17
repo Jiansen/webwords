@@ -34,7 +34,9 @@ class IndexerActor extends Actor {  // TODO
 //    override def receive = _route
   override def receive = {
     case m => 
-      context.actorOf(Props(new Worker)) forward m
+      val worker = context.actorOf(Props(new Worker))
+// println("=== IndexerActor: forwad message from "+sender+" to "+ worker)      
+      worker forward m
   }
   
   private class Worker extends Actor {
@@ -81,9 +83,10 @@ class IndexerActor extends Actor {  // TODO
             case request: IndexerRequest => request match {
                 case IndexHtml(url, docString) =>
                     val doc = Jsoup.parse(docString, url.toExternalForm)
-println("=== doc:"+ docString)                    
+// println("=== doc:"+ docString)                    
                     val index = Index(links(doc), wordCounts(doc))
 //                    self.tryReply(IndexedHtml(index))
+// println("=== IndexerActor: index = "+ index + " to "+sender)
                     sender ! IndexedHtml(index)
             }
         }
