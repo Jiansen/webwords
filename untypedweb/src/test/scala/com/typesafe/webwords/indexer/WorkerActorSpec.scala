@@ -27,7 +27,7 @@ class WorkerActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
     }
 
     behavior of "WorkerActor"
-
+/*
     it should "get an index" in {
         val testdb = Some("mongodb://localhost/webwordsworkertest")
         val config = WebWordsConfig(None, testdb, None)
@@ -47,4 +47,6 @@ class WorkerActorSpec extends FlatSpec with ShouldMatchers with BeforeAndAfterAl
         val nowheres = (index.links filter { link => link._2.endsWith("/nowhere") } map { _._1 }).sorted
         nowheres should be(Seq("a", "d", "e", "f", "g", "h", "j", "k", "m", "o"))
     }
+    * 
+    */
 }

@@ -51,6 +51,9 @@ sealed trait WorkQueueRequest extends WorkQueueMessage {
 }
 case class SpiderAndCache(url: String) extends WorkQueueRequest
 
+case class WorkQueueClientRequest(r:WorkQueueRequest, sender:ActorRef)
+case class WorkQueueClientReply(r:WorkQueueReply)
+
 object WorkQueueRequest {
     private[common] val toBinary = new ToBinary[WorkQueueRequest] {
         override def toBinary(request: WorkQueueRequest) = request.toBinary
