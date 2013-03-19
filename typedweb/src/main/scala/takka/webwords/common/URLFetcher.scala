@@ -1,4 +1,4 @@
-package com.typesafe.webwords.common
+package takka.webwords.common
 
 import java.net.URL
 import java.util.concurrent.atomic.AtomicInteger

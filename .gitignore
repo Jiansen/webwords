@@ -1,4 +1,7 @@
+takka/src
+takka/target
 target/
+.DS_Store
 .project
 .classpath
 .settings
@@ -6,5 +9,3 @@ target/
 .cache
 .metadata
 *~
-
-takka/
