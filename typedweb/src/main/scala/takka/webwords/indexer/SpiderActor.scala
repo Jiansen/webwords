@@ -6,7 +6,7 @@ import java.net.URL
 
 import takka.webwords.common._
 
-import akka.actor._
+import takka.actor._
 import akka.dispatch._
 import akka.actor.ActorLogging
 import scala.concurrent.{Await, Promise}
@@ -33,35 +33,35 @@ case class Spidered(url: URL, index: Index)
  * functional programming.
  */
 class SpiderActor
-    extends Actor {
-    private var indexer:Option[ActorRef] = None
+    extends TypedActor[SpiderRequest] {
+    private var indexer:Option[ActorRef[IndexerRequest]] = None
 //    private var fetcher:Option[ActorRef] = None
     
     import scala.concurrent.ExecutionContext.Implicits.global
     implicit val timeout = akka.util.Timeout(60 second)
     
     override def preStart() = {
-      indexer = Some(context.actorOf(Props[IndexerActor], "indexer"))
+      indexer = Some(typedContext.actorOf(Props[IndexerRequest, IndexerActor], "indexer"))
 //      fetcher = Some(context.actorOf(Props[URLFetcher], "fetcher"))
     }
 
     override def postStop() = {
-      context.stop(indexer.get)
+      typedContext.stop(indexer.get)
 //      context.stop(fetcher.get)
     }
 
 //    val bodyFuture = promise[String]
     val bodyPromises = new HashMap[URL, Promise[String]]
     
-    override def receive = {
+    override def typedReceive = {
       case Spider(url) =>
 //                self.channel.replyWith(SpiderActor.spider(indexer, fetcher, url))            
-        sender ! spider(indexer.get, url, self)
+        sender ! spider(indexer.get, url, typedSelf)
 println("=== SpiderActor: replyed to " +sender)
         
         
 
-        def spider(indexer: ActorRef, url: URL, spider:ActorRef):Spidered = {
+        def spider(indexer: ActorRef[IndexerRequest], url: URL, spider:ActorRef[SpiderRequest]):Spidered = {
 println("=== spidering")      
           val rootIndex = fetchIndex(indexer, url) 
           val childIndexes:Seq[Index] = SpiderActor.childLinksToFollow(url, rootIndex) map { fetchIndex(indexer, _) }
@@ -71,7 +71,7 @@ println("=== get spidered: "+Spidered(url, combinedIndex))
           Spidered(url, combinedIndex)
         }
         
-        def fetchIndex(indexer: ActorRef, url: URL): Index = {
+        def fetchIndex(indexer: ActorRef[IndexerRequest], url: URL): Index = {
           implicit val timeout = akka.util.Timeout(60 seconds)
           val result:Promise[Index] = promise()
           

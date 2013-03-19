@@ -1,7 +1,7 @@
 package takka.webwords.indexer
 
 import scala.collection.JavaConverters._
-import akka.actor._
+import takka.actor._
 //import akka.actor.Actor.actorOf
 // import com.typesafe.webwords.common.CPUBoundActorPool
 import java.net.URL
@@ -25,21 +25,21 @@ case class IndexedHtml(index: Index) extends IndexerReply
  * algorithmic code in Scala, in a functional style, including use of
  * parallel collections.
  */
-class IndexerActor extends Actor {  // TODO
+class IndexerActor extends TypedActor[IndexerRequest] {  // TODO
 //    with CPUBoundActorPool {
 
     // actorOf[Worker] doesn't work on nested classes
 //  override def instance = context.actorOf(Props[Worker])
 
 //    override def receive = _route
-  override def receive = {
+  override def typedReceive = {
     case m => 
-      val worker = context.actorOf(Props(new Worker))
+      val worker = typedContext.actorOf(Props[IndexerRequest](new Worker))
 // println("=== IndexerActor: forwad message from "+sender+" to "+ worker)      
-      worker forward m
+      worker.untypedRef forward m
   }
   
-  private class Worker extends Actor {
+  private class Worker extends TypedActor[IndexerRequest] {
         import IndexerActor._
 
         private def links(doc: Document) = {
@@ -79,7 +79,7 @@ class IndexerActor extends Actor {  // TODO
             wordCount(words).toSeq.sortBy(0 - _._2) take 50
         }
 
-        override def receive = {
+        override def typedReceive = {
             case request: IndexerRequest => request match {
                 case IndexHtml(url, docString) =>
                     val doc = Jsoup.parse(docString, url.toExternalForm)

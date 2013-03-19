@@ -21,7 +21,7 @@ class WorkQueueClientActor(url: Option[String] = None)
   import scala.concurrent.ExecutionContext.Implicits.global
 //    private[this] var rpcClient: Option[RPC.RpcClient[WorkQueueRequest, WorkQueueReply]] = None
     private[this] var rpcClient: Option[akka.actor.ActorRef] = None
-    override def receive = {
+    override def typedReceive = {
       case request:WorkQueueRequest =>
         val replyto = sender
 //          println("=== WorkQueueClient: receive request "+request+" from "+sender)

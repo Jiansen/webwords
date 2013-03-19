@@ -110,7 +110,7 @@ abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
 
     private[this] var connectionActor: Option[akka.actor.ActorRef] = None
 
-    override def receive = {
+    override def typedReceive = {
 
         // Messages from the connection ("connection callback")
     // TOOD:

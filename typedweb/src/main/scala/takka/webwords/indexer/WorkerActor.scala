@@ -1,6 +1,6 @@
 package takka.webwords.indexer
 
-import akka.actor._
+import takka.actor._
 // import akka.actor.Actor.actorOf
 import akka.dispatch._
 // import akka.event.EventHandler
@@ -19,8 +19,8 @@ import scala.util.{Try, Success, Failure}
  */
 class WorkerActor(config: WebWordsConfig)
     extends WorkQueueWorkerActor(config.amqpURL) {
-    private var spider:Option[ActorRef] = None
-    private var cache:Option[ActorRef] = None
+    private var spider:Option[ActorRef[Spider]] = None
+    private var cache:Option[ActorRef[IndexStorageRequest]] = None
     
     implicit val timeout = akka.util.Timeout(60 second)
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -54,13 +54,13 @@ class WorkerActor(config: WebWordsConfig)
 
     override def preStart = {
         super.preStart
-        spider = Some(context.actorOf(Props[SpiderActor], "spider"))
-        cache = Some(context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache"))
+        spider = Some(typedContext.actorOf(Props[SpiderRequest, SpiderActor], "spider"))
+        cache = Some(typedContext.actorOf(Props[IndexStorageRequest](new IndexStorageActor(config.mongoURL)), "cache"))
     }
 
     override def postStop = {
         super.postStop
-        context.stop(spider.get);
-        context.stop(cache.get)
+        typedContext.stop(spider.get);
+        typedContext.stop(cache.get)
     }
 }

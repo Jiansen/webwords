@@ -1,6 +1,6 @@
 package takka.webwords.common
 
-import akka.actor._
+import takka.actor._
 import scala.concurrent.Future
 //import akka.amqp
 //import akka.amqp.AMQP

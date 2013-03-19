@@ -16,9 +16,6 @@ case class GetIndex(url: String, skipCache: Boolean) extends ClientActorIncoming
 sealed trait ClientActorOutgoing
 case class GotIndex(url: String, index: Option[Index], cacheHit: Boolean) extends ClientActorOutgoing
 
-case class GetWithoutCache(sender:ActorRef)
-case class GetFromCacheOrElse(sender:ActorRef)
-
 /**
  * This actor encapsulates:
  *  - checking the cache for an index of a certain URL
@@ -36,7 +33,7 @@ class ClientActor(config: WebWordsConfig) extends TypedActor[GetIndex] {
         
     import ClientActor._
     
-    override def receive = {
+    override def typedReceive = {
         case GetIndex(url, skipCache) =>
           val replyto = sender
           // we look in the cache, if that fails, ask spider to
@@ -69,8 +66,8 @@ class ClientActor(config: WebWordsConfig) extends TypedActor[GetIndex] {
 
     override def preStart = {
 //      println("=== start:"+self)
-        client = Some(typedContext.actorOf(Props[SpiderAndCache](new WorkQueueClientActor(config.amqpURL)), "client"))
-        cache= Some(typedContext.actorOf(Props[FetchCachedIndex](new IndexStorageActor(config.mongoURL)), "cache"))
+        client = Some(typedContext.actorOf(Props[WorkQueueMessage](new WorkQueueClientActor(config.amqpURL)), "client"))
+        cache= Some(typedContext.actorOf(Props[IndexStorageRequest](new IndexStorageActor(config.mongoURL)), "cache"))
     }
 
     override def postStop = {

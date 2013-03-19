@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.Executors
 import com.ning.http.client._
-import akka.actor._
+import takka.actor._
 //import akka.dispatch._
 // import akka.event.EventHandler
 import akka.event.Logging

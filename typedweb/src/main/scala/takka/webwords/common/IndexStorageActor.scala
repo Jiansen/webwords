@@ -2,7 +2,7 @@ package takka.webwords.common
 
 import scala.collection.JavaConverters._
 // import akka.actor.{ Index => _, _ }
-import akka.actor._
+import takka.actor._
 import java.net.URL
 import com.mongodb.casbah.MongoConnection
 import com.mongodb.casbah.MongoDB
@@ -37,15 +37,15 @@ case class CacheSize(size: Long) extends IndexStorageReply
  *   http://www.mongodb.org/display/DOCS/Capped+Collections
  */
 class IndexStorageActor(mongoURI: Option[String])
-    extends Actor {
+    extends TypedActor[IndexStorageRequest] {
 //    with IOBoundActorPool {
 
     // MongoCollection is safe to use from multiple threads
     private class Worker(cache: MongoCollection)
-        extends Actor {
+        extends TypedActor[IndexStorageRequest] {
         import IndexStorageActor._
 
-        override def receive = {
+        override def typedReceive = {
             case GetCacheSize =>
 //                self reply CacheSize(cache.getCount())
                 sender ! CacheSize(cache.getCount())
@@ -104,9 +104,9 @@ class IndexStorageActor(mongoURI: Option[String])
     }
 
 //    override def instance = context.actorOf(Props(new Worker(cache.get)))
-    def instance = context.actorOf(Props(new Worker(cache.get)))
+    def instance = typedContext.actorOf(Props[IndexStorageRequest](new Worker(cache.get)))
 
-    override def receive = {
+    override def typedReceive = {
         case DropCache =>
             // DropCache is done here instead of in a worker so we
             // block new messages on the whole pool. There's no super
@@ -118,7 +118,7 @@ class IndexStorageActor(mongoURI: Option[String])
             cache foreach { c => c.drop() }
             recreateCache()
         case m =>
-          instance forward m
+          instance.untypedRef forward m
             // send other messages to the pool          
     }
 
