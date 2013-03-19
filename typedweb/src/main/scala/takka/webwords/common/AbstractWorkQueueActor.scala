@@ -3,7 +3,7 @@ package takka.webwords.common
 import java.net.URI
 import java.net.URLEncoder
 import java.net.URLDecoder
-import akka.actor._
+import takka.actor._
 import com.github.sstone.amqp
 import com.github.sstone.amqp._
 //import com.github.sstone.amqp.{Amqp, RpcClient, RpcServer, RabbitMQConnection}
@@ -51,7 +51,7 @@ sealed trait WorkQueueRequest extends WorkQueueMessage {
 }
 case class SpiderAndCache(url: String) extends WorkQueueRequest
 
-case class WorkQueueClientRequest(r:WorkQueueRequest, sender:ActorRef)
+case class WorkQueueClientRequest(r:WorkQueueRequest, sender:ActorRef[WorkQueueClientReply])
 case class WorkQueueClientReply(r:WorkQueueReply)
 
 object WorkQueueRequest {
@@ -104,11 +104,11 @@ object WorkQueueReply {
  * "worker" (the indexer process).
  */
 abstract class AbstractWorkQueueActor(amqpUrl: Option[String])
-    extends Actor {
+    extends TypedActor[WorkQueueMessage] {
     val log = akka.event.Logging(context.system, this)
     protected[this] val info = log.info( _: String)
 
-    private[this] var connectionActor: Option[ActorRef] = None
+    private[this] var connectionActor: Option[akka.actor.ActorRef] = None
 
     override def receive = {
 

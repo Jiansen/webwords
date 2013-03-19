@@ -3,7 +3,7 @@ package takka.webwords.common
 import java.net.URL
 
 //import akka.actor.{ Index => _, _ }
-import akka.actor._
+import takka.actor._
 import akka.dispatch._
 import akka.pattern.ask
 import scala.concurrent.duration._
@@ -27,12 +27,12 @@ case class GetFromCacheOrElse(sender:ActorRef)
  * It coordinates a WorkQueueClientActor and IndexStorageActor to accomplish
  * this.
  */
-class ClientActor(config: WebWordsConfig) extends Actor {
+class ClientActor(config: WebWordsConfig) extends TypedActor[GetIndex] {
     implicit val timeout = akka.util.Timeout(60 second)
     import ExecutionContext.Implicits.global
     
-    var client:Option[ActorRef] = None
-    var cache:Option[ActorRef] = None
+    var client:Option[ActorRef[SpiderAndCache]] = None
+    var cache:Option[ActorRef[FetchCachedIndex]] = None
         
     import ClientActor._
     
@@ -63,20 +63,20 @@ class ClientActor(config: WebWordsConfig) extends Actor {
             case Failure(e) =>
               println("=== Client Actor failed with "+e)              
           }
-        case m => 
-          println("=== Client Actor received "+m)
+//        case m => 
+//          println("=== Client Actor received "+m)
     }
 
     override def preStart = {
 //      println("=== start:"+self)
-        client = Some(context.actorOf(Props(new WorkQueueClientActor(config.amqpURL)), "client"))
-        cache= Some(context.actorOf(Props(new IndexStorageActor(config.mongoURL)), "cache"))
+        client = Some(typedContext.actorOf(Props[SpiderAndCache](new WorkQueueClientActor(config.amqpURL)), "client"))
+        cache= Some(typedContext.actorOf(Props[FetchCachedIndex](new IndexStorageActor(config.mongoURL)), "cache"))
     }
 
     override def postStop = {
 //      println("=== stop:"+self)
-        context.stop(client.get)
-        context.stop(cache.get)
+        typedContext.stop(client.get)
+        typedContext.stop(cache.get)
     }
 }
 
@@ -84,7 +84,7 @@ object ClientActor {
     implicit val timeout = akka.util.Timeout(60 second)
     import ExecutionContext.Implicits.global
     
-    private def getFromCacheOrElse(cache: ActorRef, url: String, cacheHit: Boolean)(fallback: => Future[GotIndex]): Future[GotIndex] = {
+    private def getFromCacheOrElse(cache: ActorRef[FetchCachedIndex], url: String, cacheHit: Boolean)(fallback: => Future[GotIndex]): Future[GotIndex] = {
         cache ? FetchCachedIndex(url) flatMap {
             case CachedIndexFetched(Some(index)) =>
                 Future(GotIndex(url, Some(index), cacheHit))
@@ -93,7 +93,7 @@ object ClientActor {
         }
     }
 
-    private def getFromWorker(client: ActorRef, url: String): Future[Unit] = {
+    private def getFromWorker(client: ActorRef[SpiderAndCache], url: String): Future[Unit] = {
         client ? SpiderAndCache(url) map {
             case SpideredAndCached(returnedUrl) =>
                 Unit

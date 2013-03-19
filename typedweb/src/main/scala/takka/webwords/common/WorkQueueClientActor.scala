@@ -1,6 +1,6 @@
 package takka.webwords.common
 
-import akka.actor._
+import takka.actor._
 import com.github.sstone.amqp
 import com.github.sstone.amqp.Amqp
 import com.github.sstone.amqp.RpcClient
@@ -20,7 +20,7 @@ class WorkQueueClientActor(url: Option[String] = None)
   implicit val timeout = akka.util.Timeout(60 second)
   import scala.concurrent.ExecutionContext.Implicits.global
 //    private[this] var rpcClient: Option[RPC.RpcClient[WorkQueueRequest, WorkQueueReply]] = None
-    private[this] var rpcClient: Option[ActorRef] = None
+    private[this] var rpcClient: Option[akka.actor.ActorRef] = None
     override def receive = {
       case request:WorkQueueRequest =>
         val replyto = sender
